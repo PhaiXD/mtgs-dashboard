@@ -1,0 +1,219 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;600&family=Kanit:wght@300;400;600&display=swap');
+
+/* ... (Variables & Basic Styles เหมือนเดิม) ... */
+:root {
+    --bg-gradient-start: #0c092a; 
+    --bg-gradient-end:   #030208; 
+    --bg-panel:     rgba(30, 35, 70, 0.6); 
+    --border-panel: rgba(255, 255, 255, 0.1);
+    --bg-input:     rgba(0, 0, 0, 0.4); 
+    --text-main:    #f1f5f9;
+    --text-muted:   #94a3b8;
+    --text-desc:    #818cf8;
+    --accent:       #38bdf8;
+    --accent-glow:  rgba(56, 189, 248, 0.3);
+    
+    --sidebar-width: 280px; 
+    --topbar-height: 50px;
+    --console-height: 180px; 
+    --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: radial-gradient(circle at top left, var(--bg-gradient-start), var(--bg-gradient-end));
+    background-attachment: fixed;
+    background-size: cover;
+    font-family: 'IBM Plex Sans Thai', 'Kanit', sans-serif;
+    color: var(--text-main);
+    overflow: hidden;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+/* Layout Grid */
+.app-container {
+    display: grid;
+    height: 100vh;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    grid-template-rows: var(--topbar-height) 1fr var(--console-height);
+    grid-template-areas: "topbar topbar" "sidebar dashboard" "sidebar console";
+    gap: 12px; padding: 12px;
+    transition: grid-template-columns 0.3s ease;
+}
+
+.app-container.sidebar-closed { grid-template-columns: 0px 1fr; }
+.app-container.sidebar-closed .sidebar { opacity: 0; pointer-events: none; transform: translateX(-20px); }
+
+/* Sidebar & Sections */
+.sidebar {
+    grid-area: sidebar;
+    background: var(--bg-panel);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-panel);
+    backdrop-filter: blur(10px);
+    display: flex; flex-direction: column; overflow: hidden; min-width: 280px; transition: 0.3s;
+}
+.sidebar-content { overflow-y: auto; flex-grow: 1; }
+
+.section { border-bottom: 1px solid var(--border-panel); }
+.section-header {
+    padding: 12px 15px; cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--text-main);
+    display: flex; align-items: center; background: rgba(255,255,255,0.02);
+}
+.section-header:hover { background: rgba(255,255,255,0.05); }
+.section-header .arrow-icon { margin-right: 8px; transition: 0.2s; font-size: 0.7rem;}
+.section-header.active .arrow-icon { transform: rotate(90deg); color: var(--accent); }
+.section-wrapper { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s ease-out; }
+.section-wrapper.open { grid-template-rows: 1fr; }
+.section-inner { overflow: hidden; padding: 0 15px; }
+.section-wrapper.open .section-inner { padding-top: 15px; padding-bottom: 15px; }
+
+/* Topbar */
+.topbar {
+    grid-area: topbar;
+    background: var(--bg-panel); border: 1px solid var(--border-panel); border-radius: var(--radius);
+    display: flex; align-items: center; padding: 0 12px;
+}
+.btn-toggle-sidebar { background: transparent; border: none; color: var(--text-main); font-size: 1.2rem; cursor: pointer; padding: 6px; }
+
+/* =========================================
+   GRIDSTACK WIDGET STYLES (NEW)
+   ========================================= */
+.dashboard {
+    grid-area: dashboard;
+    overflow-y: auto; /* ให้ Grid Scroll ได้ */
+    padding-right: 5px;
+}
+
+/* Override GridStack to match theme */
+.grid-stack-item-content {
+    background: var(--bg-panel) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-panel);
+    border-radius: var(--radius);
+    color: var(--text-main);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    /* Flex เพื่อจัด layout ภายใน widget */
+    display: flex;
+    flex-direction: column; 
+    overflow: hidden;
+}
+
+/* Widget Header (Title & Delete Btn) */
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: move; /* บอกให้รู้ว่าลากได้ตรงหัว */
+}
+
+.widget-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.delete-widget-btn {
+    background: transparent;
+    color: #ef4444; /* สีแดง */
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: 0.2s;
+    display: flex; align-items: center; justify-content: center;
+}
+.delete-widget-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.widget-body {
+    flex-grow: 1;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* =========================================
+   CONSOLE & FORMS
+   ========================================= */
+.console {
+    grid-area: console;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-panel);
+    border-radius: var(--radius);
+    overflow: hidden; display: flex; flex-direction: column; position: relative;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+}
+.console-resizer {
+    width: 100%; height: 6px; background: rgba(255,255,255,0.05);
+    cursor: row-resize; position: absolute; top: 0; left: 0; z-index: 10;
+}
+.console-resizer:hover { background: var(--accent); }
+.console-output {
+    flex-grow: 1; overflow-y: auto; padding: 15px; margin-top: 6px;
+    font-family: 'Consolas', monospace; font-size: 13px; color: var(--text-muted);
+}
+.log-line { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 2px;}
+.timestamp { color: var(--accent); margin-right: 8px; opacity: 0.8; font-size: 0.8em; }
+.log-msg { color: var(--text-main); }
+.log-info { color: #86efac; }
+.console-input-area {
+    background-color: rgba(0, 0, 0, 0.2); display: flex; align-items: center;
+    padding: 8px 12px; border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.console-input-area input {
+    background: transparent; border: none; color: var(--text-main); width: 100%; font-family: 'Consolas', monospace;
+}
+input:focus { outline: none; }
+
+/* Forms Styling */
+.form-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.form-group label { font-size: 0.85rem; color: var(--text-main); }
+.form-group-stack { margin-bottom: 15px; }
+.form-group-stack label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-main); }
+
+input[type="text"], select, textarea {
+    background-color: var(--bg-input); border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-main); border-radius: 6px; padding: 6px 10px; font-size: 0.9rem; width: 100%; font-family: inherit;
+}
+textarea { resize: none; height: 80px; }
+.config-form input, .config-form select { width: 140px; text-align: right; }
+
+.btn-primary, .btn-action {
+    color: white; border: none; padding: 8px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 5px;
+}
+.btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%); }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-action.send { background: linear-gradient(90deg, #f59e0b, #ea580c); }
+.btn-action.send:hover { filter: brightness(1.15); }
+
+/* 🔑 Clear Icon Style */
+.icon-clear {
+    width: 16px; 
+    height: 16px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: 0.2s;
+    /* Invert สีดำให้เป็นขาว */
+    filter: invert(1);
+}
+.icon-clear:hover { opacity: 1; transform: scale(1.1); }

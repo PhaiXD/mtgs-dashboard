@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Dashboard System</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack/dist/gridstack.min.css" />
+    
+    <link rel="stylesheet" href="./style.css"> 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="app-container" id="appContainer">
+        
+        <header class="topbar">
+            <button class="btn-toggle-sidebar" id="btnToggleSidebar">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <span style="margin-left:10px; font-weight:600; font-size:0.9rem; letter-spacing:1px;">COMMAND CENTER</span>
+        </header>
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                
+                <div class="section">
+                    <div class="section-header active" onclick="toggleSection(this)">
+                        <i class="fa-solid fa-chevron-right arrow-icon"></i> 
+                        <span class="section-title">CONFIG</span>
+                    </div>
+                    <div class="section-wrapper open"> 
+                        <div class="section-inner">
+                            <form onsubmit="return false;" class="config-form">
+                                <div class="form-group">
+                                    <label>COM Port</label>
+                                    <input type="text" id="cfg-com" placeholder="COM3" value="COM3">
+                                </div>
+                                <div class="form-group">
+                                    <label>Baud Rate</label>
+                                    <input type="text" id="cfg-baud" placeholder="115200" value="115200">
+                                </div>
+                                <div class="form-group">
+                                    <label>Format</label>
+                                    <select id="cfg-format">
+                                        <option value="Line">One line</option>
+                                        <option value="JSON">JSON</option>
+                                    </select>
+                                </div>
+                                <div class="form-actions">
+                                    <button class="btn-primary" id="btnConnect">Connect..</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-header active" onclick="toggleSection(this)">
+                        <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        <span class="section-title">ADD WIDGET</span>
+                    </div>
+                    <div class="section-wrapper open">
+                        <div class="section-inner">
+                            <div class="form-group-stack">
+                                <label>Name</label>
+                                <input type="text" id="widget-name" placeholder="Widget Name">
+                            </div>
+                            <div class="form-group-stack">
+                                <label>Type</label>
+                                <select id="widget-type">
+                                    <option value="Text">Text Display</option>
+                                    <option value="Graph">Graph</option>
+                                    <option value="Control">Control Panel</option>
+                                </select>
+                            </div>
+                            <div class="form-actions">
+                                <button class="btn-primary" id="btnAddWidget">Add Widget</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        <span class="section-title">SIMULATOR</span>
+                    </div>
+                    <div class="section-wrapper">
+                        <div class="section-inner">
+                            <div class="form-group-stack">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <label>Raw Data</label>
+                                    <img src="./.icons/clear_data.png" id="btnClearRaw" class="icon-clear" alt="Clear" title="Clear Data">
+                                </div>
+                                <textarea id="sim-rawdata" rows="3" placeholder="Data stream..."></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button class="btn-action send" id="btnSend">Send Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <main class="dashboard">
+            <div class="grid-stack">
+                </div>
+        </main>
+
+        <footer class="console" id="consolePanel">
+            <div class="console-resizer" id="consoleResizer"></div>
+            <div class="console-output" id="consoleOutput">
+                <div class="log-line">
+                    <span class="timestamp">[SYSTEM]</span>
+                    <span class="log-msg">Dashboard initialized. GridStack ready.</span>
+                </div>
+            </div>
+            <div class="console-input-area">
+                <span class="timestamp">></span>
+                <input type="text" id="consoleInput" placeholder="Enter command...">
+            </div>
+        </footer>
+
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/gridstack/dist/gridstack-all.js"></script>
+    <script src="./script.js"></script>
+
+</body>
+</html>
