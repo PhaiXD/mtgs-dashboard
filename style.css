@@ -114,42 +114,169 @@ body {
     padding: 8px 12px;
     background: rgba(255, 255, 255, 0.05);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    cursor: move; /* บอกให้รู้ว่าลากได้ตรงหัว */
+    /* 🔑 KEY: เปลี่ยน Cursor ให้รู้ว่าลากได้เฉพาะตรงนี้ */
+    cursor: grab; 
 }
+.widget-header:active { cursor: grabbing; }
 
-.widget-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.delete-widget-btn {
+.widget-settings-btn {
     background: transparent;
-    color: #ef4444; /* สีแดง */
+    color: var(--text-muted);
     border: none;
     cursor: pointer;
     font-size: 14px;
-    padding: 2px 6px;
+    padding: 4px;
     border-radius: 4px;
     transition: 0.2s;
-    display: flex; align-items: center; justify-content: center;
 }
-.delete-widget-btn:hover {
-    background: rgba(239, 68, 68, 0.2);
+.widget-settings-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.1); }
+
+/* --- 2. MODAL & ANIMATION --- */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.4); /* สีพื้นหลังจางๆ */
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Animation State: เริ่มต้นซ่อน */
+    opacity: 0;
+    visibility: hidden;
+    backdrop-filter: blur(0px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.widget-body {
-    flex-grow: 1;
-    padding: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9rem;
+/* Class สำหรับเปิด Modal */
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    backdrop-filter: blur(8px); /* 🔑 KEY: Background Blur */
+}
+
+.modal-content {
+    background: #1e2346; /* สีเดียวกับ Panel แต่ทึบกว่านิดหน่อย */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 24px;
+    width: 320px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    transform: scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    color: var(--text-main);
+}
+.modal-overlay.active .modal-content { transform: scale(1); }
+
+/* --- 3. MODAL ELEMENT STYLES (ตามภาพวาด) --- */
+
+/* Header: Title Edit */
+.modal-header-row {
+    display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;
+}
+.title-edit-wrapper {
+    display: flex; align-items: center; gap: 8px; border-bottom: 2px solid var(--text-main); padding-bottom: 2px;
+}
+.modal-widget-name {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent; /* ซ่อนเส้นขีด */
+    color: var(--text-main);
+    font-size: 1.5rem;
+    font-weight: 600;
+    width: 180px;
+    outline: none;
+    font-family: inherit;
+    pointer-events: none; /* 🔑 ห้ามคลิกที่ตัวหนังสือโดยตรง */
+    transition: all 0.2s;
+}
+.modal-widget-name.editable {
+    border-bottom: 2px solid var(--text-main); /* โชว์เส้นขีด */
+    pointer-events: auto; /* ยอมให้คลิก/พิมพ์ได้ */
+    background: rgba(255, 255, 255, 0.05); /* ใส่พื้นหลังจางๆ ให้รู้ว่าเป็นช่อง */
+    border-radius: 4px;
+    padding: 0 5px;
+}
+.edit-icon {
     color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: 0.2s;
+    padding: 5px; /* เพิ่มพื้นที่กด */
+    border-radius: 50%;
+}
+.edit-icon:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-main);
+}
+.close-modal-btn {
+    background: transparent; border: none; color: #ef4444; font-size: 1.5rem; cursor: pointer; line-height: 1;
+}
+
+/* Form Rows */
+.modal-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 15px;
+}
+.modal-label { font-size: 1rem; color: var(--text-main); white-space: nowrap; }
+
+/* Input Gray Box Style */
+.input-gray-box {
+    background: #94a3b8; /* สีเทาตามภาพ */
+    color: #0f172a; /* Text สีเข้ม */
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-weight: 600;
+    width: 100%;
+    outline: none;
+    font-family: 'Consolas', monospace;
+}
+.id-wrapper { display: flex; align-items: center; gap: 5px; }
+
+/* Divider */
+.modal-divider {
+    height: 1px; background: rgba(255,255,255,0.1); margin: 15px 0; width: 100%;
+}
+
+/* Select Dropdown */
+.modal-select {
+    width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--text-main);
+    background: transparent; color: var(--text-main); margin-bottom: 15px;
+    font-size: 1rem; cursor: pointer;
+}
+.modal-select option { background: #1e2346; color: var(--text-main); }
+
+/* Delete Button (Bottom Right) */
+.modal-footer {
+    display: flex; justify-content: flex-end; margin-top: 25px;
+}
+.btn-delete-modal {
+    background: transparent;
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: 0.2s;
+}
+.btn-delete-modal:hover { background: #ef4444; color: white; }
+
+/* 🔑 เพิ่ม Animation ให้ปุ่มทุกประเภท */
+button, .btn-primary, .btn-action, .btn-file, .btn-toggle-sidebar, .widget-settings-btn, .close-modal-btn, .edit-icon {
+    transition: transform 0.1s ease, background 0.2s, filter 0.2s;
+}
+
+/* เวลากดค้าง (Click) ให้ยุบลงเล็กน้อย */
+button:active, .btn-primary:active, .btn-action:active, .edit-icon:active {
+    transform: scale(0.92); /* ย่อลงเหลือ 92% */
+}
+
+/* เวลาเอาเมาส์ชี้ ให้เด้งขึ้นนิดเดียว (Optional) */
+.btn-primary:hover, .btn-action:hover {
+    transform: translateY(-2px);
 }
 
 /* =========================================
@@ -160,14 +287,30 @@ body {
     background-color: var(--bg-panel);
     border: 1px solid var(--border-panel);
     border-radius: var(--radius);
-    overflow: hidden; display: flex; flex-direction: column; position: relative;
+    overflow: hidden; 
+    display: flex; 
+    flex-direction: column; 
+    position: relative;
     box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
 }
 .console-resizer {
     width: 100%; height: 6px; background: rgba(255,255,255,0.05);
-    cursor: row-resize; position: absolute; top: 0; left: 0; z-index: 10;
+    cursor: row-resize; position: absolute; top: 0; left: 0; z-index: 20;
 }
 .console-resizer:hover { background: var(--accent); }
+
+#btnClearConsole {
+    position: absolute;
+    right: 0;
+    margin: 15px 10px;
+}
+
+/* Clear Icon */
+.icon-clear {
+    width: 16px; height: 16px; cursor: pointer; opacity: 0.7; transition: 0.2s; filter: invert(1);
+}
+.icon-clear:hover { opacity: 1; transform: scale(1.1); }
+
 .console-output {
     flex-grow: 1; overflow-y: auto; padding: 15px; margin-top: 6px;
     font-family: 'Consolas', monospace; font-size: 13px; color: var(--text-muted);

@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern Dashboard System</title>
+    <title>Modular Telemetry Ground Station Dashboard</title>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack/dist/gridstack.min.css" />
     
-    <link rel="stylesheet" href="./style.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="./style.css"> 
 </head>
 <body>
 
@@ -18,7 +19,7 @@
             <button class="btn-toggle-sidebar" id="btnToggleSidebar">
                 <i class="fa-solid fa-bars"></i>
             </button>
-            <span style="margin-left:10px; font-weight:600; font-size:0.9rem; letter-spacing:1px;">COMMAND CENTER</span>
+            <span class="app-title">Modular Telemetry Ground Station Dashboard</span>
         </header>
 
         <aside class="sidebar" id="sidebar">
@@ -71,7 +72,8 @@
                                 <select id="widget-type">
                                     <option value="Text">Text Display</option>
                                     <option value="Graph">Graph</option>
-                                    <option value="Control">Control Panel</option>
+                                    <option value="Map">Map</option>
+                                    <option value="Table">Table</option>
                                 </select>
                             </div>
                             <div class="form-actions">
@@ -89,11 +91,8 @@
                     <div class="section-wrapper">
                         <div class="section-inner">
                             <div class="form-group-stack">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <label>Raw Data</label>
-                                    <img src="./.icons/clear_data.png" id="btnClearRaw" class="icon-clear" alt="Clear" title="Clear Data">
-                                </div>
-                                <textarea id="sim-rawdata" rows="3" placeholder="Data stream..."></textarea>
+                                <label>Simulation Data (Sim Input)</label>
+                                <textarea id="sim-input" rows="3" placeholder="Enter data to simulate..."></textarea>
                             </div>
                             <div class="form-actions">
                                 <button class="btn-action send" id="btnSend">Send Data</button>
@@ -112,21 +111,69 @@
 
         <footer class="console" id="consolePanel">
             <div class="console-resizer" id="consoleResizer"></div>
+            
+            <div class="console-header">
+                <img src="./icons/clear_data.png" id="btnClearConsole" class="icon-clear" alt="Clear" title="Clear Raw Data">
+            </div>
+
             <div class="console-output" id="consoleOutput">
                 <div class="log-line">
                     <span class="timestamp">[SYSTEM]</span>
-                    <span class="log-msg">Dashboard initialized. GridStack ready.</span>
+                    <span class="log-msg">System Ready.</span>
                 </div>
             </div>
+            
             <div class="console-input-area">
                 <span class="timestamp">></span>
-                <input type="text" id="consoleInput" placeholder="Enter command...">
+                <input type="text" id="consoleInput" placeholder="Enter uplink command...">
             </div>
         </footer>
 
     </div>
     
+    <div class="modal-overlay" id="settingModalOverlay">
+        <div class="modal-content" id="settingModalContent">
+            
+            <div class="modal-header-row">
+                <div class="title-edit-wrapper">
+                    <input type="text" id="modalWidgetName" class="modal-widget-name" value="velocity" readonly>
+                    <i class="fa-solid fa-pencil edit-icon" id="btnEditName"></i>
+                </div>
+                <button class="close-modal-btn" id="btnCloseModal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="modal-row id-wrapper">
+                <span class="modal-label">id: 0 -></span>
+                <input type="text" id="modalWidgetId" class="input-gray-box" placeholder="velo">
+            </div>
+
+            <div class="modal-divider"></div>
+
+            <select id="modalWidgetType" class="modal-select">
+                <option value="Text">Text</option>
+                <option value="Graph">Graph</option>
+                <option value="Map">Map</option>
+                <option value="Table">Table</option>
+            </select>
+
+            <div class="modal-row">
+                <span class="modal-label">Data format</span>
+                <input type="text" id="modalWidgetFormat" class="input-gray-box" placeholder="{velo}m/s">
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-delete-modal" id="btnDeleteWidget">
+                    <i class="fa-solid fa-trash-can"></i> Delete
+                </button>
+            </div>
+
+        </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/gridstack/dist/gridstack-all.js"></script>
+    
     <script src="./script.js"></script>
 
 </body>

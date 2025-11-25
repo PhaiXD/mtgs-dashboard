@@ -1,72 +1,191 @@
 document.addEventListener("DOMContentLoaded", () => {
     
     /* ========================
-       1. GridStack Initialization
+       1. GridStack Init (Fix Drag Handle)
        ======================== */
     const grid = GridStack.init({
         float: true,
-        cellHeight: 100, // ปรับความสูงของแต่ละแถว
+        cellHeight: 100,
         minRow: 1,
-        margin: 8, // ระยะห่างระหว่าง Widget
-        column: 12, // จำนวนคอลัมน์มาตรฐาน
-        disableOneColumnMode: true // ห้ามเปลี่ยนเป็นคอลัมน์เดียว (เพื่อให้คง Layout)
+        margin: 8,
+        column: 12,
+        disableOneColumnMode: true,
+        // 🔑 KEY: กำหนดให้ลากได้เฉพาะ class .widget-header เท่านั้น
+        draggable: {
+            handle: '.widget-header',
+            scroll: true,
+            appendTo: 'body'
+        }
     });
 
-    // Helper: สร้าง HTML สำหรับ Widget พร้อมปุ่มลบ
-    const createWidgetHTML = (title, type) => {
+    /* ========================
+       2. Data & Helper
+       ======================== */
+    // ตัวแปรเก็บ Widget ที่กำลัง Edit อยู่ปัจจุบัน
+    let currentEditingWidget = null;
+
+    // Helper: สร้าง HTML สำหรับ Widget
+    // เปลี่ยนปุ่ม Delete (X) เป็นปุ่ม Settings (Gear)
+    const createWidgetHTML = (title, type, idVal = "", formatVal = "") => {
         return `
             <div class="widget-header">
-                <span class="widget-title">${title}</span>
-                <button class="delete-widget-btn"><i class="fa-solid fa-xmark"></i></button>
+                <span class="widget-title" data-name="${title}">${title}</span>
+                <button class="widget-settings-btn"><i class="fa-solid fa-gear"></i></button>
             </div>
-            <div class="widget-body">
-                <span>[${type} Content]</span>
+            <div class="widget-body" data-type="${type}" data-id="${idVal}" data-format="${formatVal}">
+                <span>[${type}]<br>${formatVal || "No Format"}</span> 
             </div>
         `;
     };
 
-    // Event Delegation: ฟัง event การกดปุ่มลบ (X) จาก container grid-stack
+    /* ========================
+       3. Modal Logic
+       ======================== */
+    const modalOverlay = document.getElementById('settingModalOverlay');
+    const modalContent = document.getElementById('settingModalContent');
+    const inputName = document.getElementById('modalWidgetName');
+    const inputId = document.getElementById('modalWidgetId');
+    const selectType = document.getElementById('modalWidgetType');
+    const inputFormat = document.getElementById('modalWidgetFormat');
+    const btnEditName = document.getElementById('btnEditName');
+
+    // --- Function: Open Modal ---
+    function openModal(widgetElement) {
+        currentEditingWidget = widgetElement;
+        
+        // 1. ดึงค่าจาก Widget ปัจจุบันมาใส่ใน Modal
+        const header = widgetElement.querySelector('.widget-title');
+        const body = widgetElement.querySelector('.widget-body');
+        
+        // ดึงค่าจาก HTML หรือ Attribute (ในที่นี้ดึงจาก Attribute ที่เราแอบแปะไว้ หรือ textContent)
+        inputName.value = header.innerText; // ชื่อ
+        inputId.value = body.dataset.id || ""; // ID (ถ้าเคยเซฟไว้)
+        selectType.value = body.dataset.type || "Text"; // Type
+        inputFormat.value = body.dataset.format || ""; // Format
+
+        // 2. แสดง Modal (Animation)
+        modalOverlay.classList.add('active');
+    }
+
+    // --- Function: Close & Save Modal ---
+    function closeModal() {
+        if (currentEditingWidget) {
+            // Save Changes กลับไปที่ Widget ทันทีที่ปิด (หรือจะทำปุ่ม Save แยกก็ได้)
+            const header = currentEditingWidget.querySelector('.widget-title');
+            const body = currentEditingWidget.querySelector('.widget-body');
+
+            // อัปเดต UI หน้า Dashboard
+            header.innerText = inputName.value;
+            
+            // อัปเดต Data Attribute เพื่อจำค่าไว้เปิดครั้งหน้า
+            body.dataset.id = inputId.value;
+            body.dataset.type = selectType.value;
+            body.dataset.format = inputFormat.value;
+
+            // อัปเดตการแสดงผลใน Body ของการ์ด (ตัวอย่าง)
+            body.innerHTML = `<span>[${selectType.value}]<br>${inputFormat.value || inputId.value || "No Data"}</span>`;
+        }
+
+        // ซ่อน Modal
+        modalOverlay.classList.remove('active');
+        currentEditingWidget = null;
+    }
+
+    // Event: กดปุ่ม Setting บน Widget เพื่อเปิด Modal
+    // ใช้ Delegation เพราะ Widget ถูกสร้างใหม่ได้ตลอด
     const gridStackContainer = document.querySelector('.grid-stack');
     gridStackContainer.addEventListener('click', (e) => {
-        // เช็คว่ากดโดนปุ่มลบ หรือ icon ข้างในปุ่มลบหรือไม่
-        const btn = e.target.closest('.delete-widget-btn');
+        // เช็คว่ากดโดนปุ่ม Gear หรือ icon ข้างใน
+        const btn = e.target.closest('.widget-settings-btn');
         if (btn) {
             const widgetItem = btn.closest('.grid-stack-item');
             if (widgetItem) {
-                grid.removeWidget(widgetItem);
+                openModal(widgetItem);
             }
         }
     });
 
-/* ========================
-       2. Add Widget Logic (แก้ไขใหม่)
+    // Event: ปุ่ม Close (X) ใน Modal
+    document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+
+    // Event: กดพื้นหลัง Overlay เพื่อปิด
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            closeModal();
+        }
+    });
+
+    // Event: ปุ่ม Edit Name (ดินสอ)
+    btnEditName.addEventListener('click', () => {
+        // 1. ปลดล็อก Input
+        inputName.removeAttribute('readonly');
+        inputName.classList.add('editable');
+        
+        // 2. เอา Cursor ไปวางแล้วเลือกข้อความทั้งหมดให้เลย (สะดวกต่อการแก้)
+        inputName.focus();
+        inputName.select(); 
+    });
+
+    // Event: เมื่อกด Enter หรือ คลิกออกจากช่องชื่อ (Blur) -> ให้กลับเป็น Text ปกติ
+    const finishEditingName = () => {
+        inputName.setAttribute('readonly', true); // ล็อกกลับ
+        inputName.classList.remove('editable'); // เอาเส้นขีดออก
+        inputName.blur(); // เอา focus ออก
+    };
+
+    inputName.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') {
+            finishEditingName();
+        }
+    });
+    
+    // เพิ่ม: ถ้าคลิกเมาส์ที่อื่น ก็ให้เซฟเหมือนกัน
+    inputName.addEventListener('blur', () => {
+        finishEditingName();
+    });
+
+    // Event: กด Enter ในช่องชื่อ -> ให้เบลอออก (เหมือนเซฟ)
+    inputName.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') inputName.blur();
+    });
+
+    /* ========================
+       4. Delete Logic (Move inside Modal)
+       ======================== */
+    const btnDeleteWidget = document.getElementById('btnDeleteWidget');
+    btnDeleteWidget.addEventListener('click', () => {
+        if (currentEditingWidget) {
+            // ลบ Widget ออกจาก Grid
+            grid.removeWidget(currentEditingWidget);
+            // ปิด Modal
+            closeModal(); 
+            // Reset ตัวแปรเพื่อความชัวร์
+            currentEditingWidget = null;
+        }
+    });
+
+    /* ========================
+       5. Add Widget (Updated)
        ======================== */
     const btnAddWidget = document.getElementById('btnAddWidget');
     const inputWidgetName = document.getElementById('widget-name');
     const inputWidgetType = document.getElementById('widget-type');
 
     btnAddWidget.addEventListener('click', () => {
-        // 1. ดึงค่าชื่อ
         let name = inputWidgetName.value.trim();
         if (name === "") name = "Untitled";
-
         const type = inputWidgetType.value;
 
-        // 2. เพิ่ม Widget เปล่าๆ ลง Grid (ไม่ต้องใส่ content ในนี้)
-        const widgetElement = grid.addWidget({
-            w: 3, h: 2 // ขนาดเริ่มต้น
-        });
+        // สร้าง Widget
+        const widgetElement = grid.addWidget({ w: 3, h: 2 });
 
-        // 3. เข้าถึง div เนื้อหาข้างใน (.grid-stack-item-content) แล้วยัด HTML เข้าไปเอง
         if (widgetElement) {
             const contentDiv = widgetElement.querySelector('.grid-stack-item-content');
             if (contentDiv) {
-                // ใช้ innerHTML เพื่อให้มันแปลงเป็นปุ่มและข้อความ
+                // ใส่ HTML โครงสร้างใหม่ (มีปุ่ม Setting แทนปุ่ม X)
                 contentDiv.innerHTML = createWidgetHTML(name, type);
             }
         }
-
-        // 4. เคลียร์ค่า Input
         inputWidgetName.value = "";
     });
 
@@ -79,10 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Toggle Sidebar
     btnToggle.addEventListener('click', () => {
         appContainer.classList.toggle('sidebar-closed');
-        // รอ Animation จบแล้วให้ Grid คำนวณขนาดใหม่
-        setTimeout(() => {
-            grid.onResize(); 
-        }, 350);
+        setTimeout(() => grid.onResize(), 350);
     });
 
     // Accordion Logic
@@ -97,10 +213,9 @@ document.addEventListener("DOMContentLoaded", () => {
        ======================== */
     const consoleOutput = document.getElementById('consoleOutput');
     const consoleInput = document.getElementById('consoleInput');
-    const inputRawData = document.getElementById('sim-rawdata');
-    const btnClearRaw = document.getElementById('btnClearRaw');
+    const simInput = document.getElementById('sim-input'); // ช่อง Data to Simulate
+    const btnClearConsole = document.getElementById('btnClearConsole'); // ปุ่ม Clear ที่ย้ายมา Console
 
-    // Function: Log ลง Console
     function logToConsole(message, type = 'normal') {
         const now = new Date();
         const timeStr = now.toLocaleTimeString('th-TH', { hour12: false });
@@ -115,47 +230,54 @@ document.addEventListener("DOMContentLoaded", () => {
         consoleOutput.scrollTop = consoleOutput.scrollHeight;
     }
 
-    // A. Console Input -> Log AND Append to Raw Data
+    // A. Console Command Input (Uplink)
     consoleInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const cmd = consoleInput.value.trim();
             if (cmd) {
-                // 1. แสดงใน Console Log
-                logToConsole(`Command sent: ${cmd}`);
-                
-                // 2. แสดงใน Raw Data (Sidebar) ตามที่ขอ
-                // ถ้ามีข้อมูลอยู่แล้ว ให้ขึ้นบรรทัดใหม่
-                if (inputRawData.value !== "") {
-                    inputRawData.value += "\n";
-                }
-                inputRawData.value += `> ${cmd}`;
-                
-                // 3. เคลียร์ช่อง Console Input
-                consoleInput.value = "";
+                // แสดงเฉพาะใน Console Log (Raw Data Display) ไม่ไปยุ่งกับช่อง Simulator
+                logToConsole(`> ${cmd}`);
+                consoleInput.value = ""; // Clear Command Input
             }
         }
     });
 
-    // B. Clear Raw Data Button
-    btnClearRaw.addEventListener('click', () => {
-        inputRawData.value = ""; // ล้างข้อมูล
-        logToConsole("Raw data cleared."); // แจ้งเตือนใน Console นิดหน่อย
+    // B. Clear Console Button (ที่ Console Header)
+    btnClearConsole.addEventListener('click', () => {
+        consoleOutput.innerHTML = ''; // ล้างหน้าจอ Log
     });
 
-    // C. Connect Simulation
-    document.getElementById('btnConnect').addEventListener('click', () => {
-        const com = document.getElementById('cfg-com').value;
-        const baud = document.getElementById('cfg-baud').value;
-        logToConsole(`Connected to ${com} (${baud})`, 'success');
+    // C. Connect Logic (Config)
+    const btnConnect = document.getElementById('btnConnect');
+    const cfgCom = document.getElementById('cfg-com');
+    const cfgBaud = document.getElementById('cfg-baud');
+    const cfgFormat = document.getElementById('cfg-format');
+
+    btnConnect.addEventListener('click', () => {
+        const com = cfgCom.value;
+        const baud = cfgBaud.value;
+        const format = cfgFormat.value;
+
+        // 1. Log ครบทุกค่า (COM, Baud, Format)
+        logToConsole(`Connected to <b>${com}</b> @ <b>${baud}</b> baud (Format: <b>${format}</b>)`, 'success');
         
-        // เพิ่มข้อความลง Raw Data ด้วยเพื่อให้เห็นสถานะ
-        inputRawData.value += `[SYSTEM] Connected: ${com} @ ${baud}\n`;
+        // 2. เคลียร์ค่า Input ใน Config (ตามที่ขอ "เหมือน add widget")
+        cfgCom.value = "";
+        cfgBaud.value = "";
+        // format อาจจะไม่ต้องเคลียร์เพราะเป็น select แต่ถ้าอยากให้ reset ก็ทำได้:
+        // cfgFormat.selectedIndex = 0; 
     });
     
-    // D. Send Data Simulation
+    // D. Simulator Send Data Logic
     document.getElementById('btnSend').addEventListener('click', () => {
-        const data = inputRawData.value;
-        if(data) logToConsole(`Data sent: ${data.substring(0, 20)}...`);
+        const data = simInput.value; // ดึงจากช่อง Sim Input
+        if(data.trim() !== "") {
+            // 1. ส่งข้อมูลไปแสดงที่ Console Log (เสมือนรับ Data เข้ามา)
+            logToConsole(`RX: ${data}`); 
+            
+            // 2. เคลียร์ค่า Sim Input (เพื่อให้พร้อมกรอกค่าใหม่)
+            simInput.value = ""; 
+        }
     });
 
     /* ========================
@@ -183,8 +305,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isResizingConsole) {
             isResizingConsole = false;
             document.body.style.cursor = 'default';
-            // GridStack อาจต้องปรับขนาดถ้าพื้นที่เปลี่ยน (ในกรณีนี้ไม่กระทบมากแต่ใส่กันเหนียวได้)
         }
     });
-
 });
