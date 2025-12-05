@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
+
+    const widgetInstances = {};
     
     /* ========================
        1. GridStack Init (Fix Drag Handle)
@@ -29,11 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const createWidgetHTML = (title, type, idVal = "", formatVal = "") => {
         return `
             <div class="widget-header">
-                <span class="widget-title" data-name="${title}">${title}</span>
+                <span class="widget-title">${title}</span>
                 <button class="widget-settings-btn"><i class="fa-solid fa-gear"></i></button>
             </div>
-            <div class="widget-body" data-type="${type}" data-id="${idVal}" data-format="${formatVal}">
-                <span>[${type}]<br>${formatVal || "No Format"}</span> 
+            <div class="widget-body" data-type="${type}" data-index="${idVal}" data-format="${formatVal}">
+                <div class="content-area" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
+                    NaN
+                </div>
+                <div class="widget-index-label">ID: ${idVal}</div>
             </div>
         `;
     };
@@ -53,40 +58,43 @@ document.addEventListener("DOMContentLoaded", () => {
     function openModal(widgetElement) {
         currentEditingWidget = widgetElement;
         
-        // 1. ดึงค่าจาก Widget ปัจจุบันมาใส่ใน Modal
         const header = widgetElement.querySelector('.widget-title');
         const body = widgetElement.querySelector('.widget-body');
         
-        // ดึงค่าจาก HTML หรือ Attribute (ในที่นี้ดึงจาก Attribute ที่เราแอบแปะไว้ หรือ textContent)
-        inputName.value = header.innerText; // ชื่อ
-        inputId.value = body.dataset.id || ""; // ID (ถ้าเคยเซฟไว้)
-        selectType.value = body.dataset.type || "Text"; // Type
-        inputFormat.value = body.dataset.format || ""; // Format
+        inputName.value = header.innerText;
+        // inputId.value = body.dataset.id || ""; <-- ลบอันเก่า
+        inputId.value = body.dataset.index || "0"; // <-- ดึงค่า index มาโชว์ (ถ้าไม่มีให้เป็น 0)
+        selectType.value = body.dataset.type || "Text";
+        inputFormat.value = body.dataset.format || ""; 
 
-        // 2. แสดง Modal (Animation)
         modalOverlay.classList.add('active');
     }
 
     // --- Function: Close & Save Modal ---
     function closeModal() {
         if (currentEditingWidget) {
-            // Save Changes กลับไปที่ Widget ทันทีที่ปิด (หรือจะทำปุ่ม Save แยกก็ได้)
             const header = currentEditingWidget.querySelector('.widget-title');
             const body = currentEditingWidget.querySelector('.widget-body');
 
-            // อัปเดต UI หน้า Dashboard
+            // 1. อัปเดตชื่อหัวข้อ
             header.innerText = inputName.value;
             
-            // อัปเดต Data Attribute เพื่อจำค่าไว้เปิดครั้งหน้า
-            body.dataset.id = inputId.value;
+            // 2. อัปเดตค่าที่ซ่อนไว้ (เปลี่ยนจาก id เป็น index ตามที่คุณต้องการ)
+            // body.dataset.id = inputId.value;  <-- ลบบรรทัดเดิมนี้
+            body.dataset.index = inputId.value; // <-- ใช้อันนี้แทน (เก็บ Index)
             body.dataset.type = selectType.value;
             body.dataset.format = inputFormat.value;
 
-            // อัปเดตการแสดงผลใน Body ของการ์ด (ตัวอย่าง)
-            body.innerHTML = `<span>[${selectType.value}]<br>${inputFormat.value || inputId.value || "No Data"}</span>`;
+            // 3. แสดงผลชั่วคราว (Preview)
+            // ถ้ายังไม่มีข้อมูลจริง ให้โชว์ Format หรือคำว่า Waiting...
+            body.innerHTML = `
+                <div class="content-area" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
+                    Waiting...
+                </div>
+                <div class="widget-index-label">ID: ${inputId.value}</div>
+            `;
         }
 
-        // ซ่อน Modal
         modalOverlay.classList.remove('active');
         currentEditingWidget = null;
     }
@@ -247,7 +255,163 @@ document.addEventListener("DOMContentLoaded", () => {
         consoleOutput.innerHTML = ''; // ล้างหน้าจอ Log
     });
 
-    // C. Connect Logic (Config)
+    /* ========================
+       ส่วนเสริม: เชื่อมต่อกับ Backend (Python)
+       วางไว้ก่อนส่วน C หรือบนสุดของไฟล์ก็ได้ครับ
+       ======================== */
+    const socket = io(); // เปิดท่อคุยกับ Python
+
+    // 1. รอฟังข่าวดี/ข่าวร้าย จาก Python (Log Message)
+    socket.on('log_message', (data) => {
+        // data.msg คือข้อความ, data.type คือสี (success/error)
+        logToConsole(data.msg, data.type);
+    });
+
+    function formatValue(value, formatStr) {
+        if (!formatStr) return value;
+        return formatStr.replace(/\{.*?\}/g, value); 
+    }
+
+    function updateDashboard(dataString) {
+        // แปลง "10,20,30" -> ["10", "20", "30"]
+        const dataArray = dataString.split(',').map(s => s.trim());
+        const widgets = document.querySelectorAll('.widget-body');
+
+        widgets.forEach(widget => {
+            const index = parseInt(widget.dataset.index);
+            const type = widget.dataset.type;
+            const format = widget.dataset.format;
+            const contentArea = widget.querySelector('.content-area');
+            
+            // สร้าง ID ให้ Widget (ถ้ายังไม่มี)
+            if (!widget.id) widget.id = 'w-' + Math.random().toString(36).substr(2, 9);
+            const wId = widget.id;
+
+            // ดึงค่าตาม Index
+            let value = "NaN";
+            if (!isNaN(index) && dataArray[index] !== undefined) {
+                value = dataArray[index];
+            }
+
+            // แยกการทำงานตามประเภท
+            switch (type) {
+                case 'Text':
+                    contentArea.innerHTML = formatValue(value, format);
+                    break;
+
+                case 'Graph':
+                    // สร้างกราฟครั้งแรก
+                    if (!widgetInstances[wId]) {
+                        contentArea.innerHTML = '<canvas></canvas>';
+                        const ctx = contentArea.querySelector('canvas').getContext('2d');
+                        widgetInstances[wId] = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: [],
+                                datasets: [{
+                                    label: 'Data',
+                                    data: [],
+                                    borderColor: '#38bdf8', // สีฟ้า
+                                    tension: 0.3,
+                                    borderWidth: 2,
+                                    pointRadius: 0
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                animation: false, // ปิด Animation เพื่อความลื่น
+                                scales: {
+                                    x: { display: false }, // ซ่อนแกน X
+                                    y: { 
+                                        grid: { color: 'rgba(255,255,255,0.1)' },
+                                        ticks: { color: '#fff' }
+                                    }
+                                },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                    }
+                    
+                    // อัปเดตข้อมูลกราฟ
+                    const chart = widgetInstances[wId];
+                    if (value !== "NaN") {
+                        const now = new Date().toLocaleTimeString();
+                        chart.data.labels.push(now);
+                        chart.data.datasets[0].data.push(parseFloat(value));
+                        
+                        // จำกัดจำนวนจุด (ไม่ให้เกิน 20 จุด)
+                        if (chart.data.labels.length > 20) {
+                            chart.data.labels.shift();
+                            chart.data.datasets[0].data.shift();
+                        }
+                        chart.update();
+                    }
+                    break;
+
+                case 'Map':
+                    // Map ใช้ข้อมูล 2 ตัว: Index (Lat) และ Index+1 (Long)
+                    const lat = parseFloat(dataArray[index]);
+                    const lng = parseFloat(dataArray[index + 1]);
+
+                    // สร้างแผนที่ครั้งแรก
+                    if (!widgetInstances[wId]) {
+                        contentArea.innerHTML = '<div class="map-container" style="height:100%; width:100%;"></div>';
+                        const mapDiv = contentArea.querySelector('.map-container');
+                        
+                        const map = L.map(mapDiv).setView([13.7563, 100.5018], 10);
+                        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                            attribution: '©OpenStreetMap'
+                        }).addTo(map);
+                        
+                        const marker = L.marker([13.7563, 100.5018]).addTo(map);
+                        widgetInstances[wId] = { map, marker };
+                        
+                        // แก้บั๊กแผนที่แสดงผลไม่เต็ม
+                        setTimeout(() => map.invalidateSize(), 500);
+                    }
+
+                    // อัปเดตตำแหน่ง Marker
+                    const mapObj = widgetInstances[wId];
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        const newLatLng = new L.LatLng(lat, lng);
+                        mapObj.marker.setLatLng(newLatLng);
+                        mapObj.map.panTo(newLatLng); // เลื่อนตามแบบไม่เปลี่ยน Zoom
+                    }
+                    break;
+
+                case 'Table':
+                    // สร้างตารางแสดงข้อมูลทั้งหมด
+                    let tableHTML = `<table class="data-table" style="width:100%;">
+                                        <thead><tr><th>Idx</th><th>Value</th></tr></thead>
+                                        <tbody>`;
+                    
+                    dataArray.forEach((val, idx) => {
+                        // ไฮไลท์แถวที่ตรงกับ Index ที่เลือก
+                        const highlight = (idx === index) ? 'background:rgba(56, 189, 248, 0.2);' : '';
+                        tableHTML += `<tr style="${highlight}">
+                                        <td>${idx}</td>
+                                        <td style="color:#38bdf8;">${val}</td>
+                                      </tr>`;
+                    });
+                    tableHTML += `</tbody></table>`;
+                    
+                    contentArea.innerHTML = `<div style="overflow-y:auto; max-height:100%; width:100%;">${tableHTML}</div>`;
+                    break;
+            }
+        });
+    }
+
+    // เมื่อได้รับข้อมูลจาก Python (ทั้งจาก ESP32 จริง และ Simulator)
+    socket.on('serial_data', (packet) => {
+        logToConsole(`RX: ${packet.data}`); // โชว์ Log เหมือนเดิม
+        updateDashboard(packet.data);       // **เรียกฟังก์ชันอัปเดตหน้าจอ!**
+    });
+
+
+    /* ========================
+       C. Connect Logic (แบบใช้งานจริง)
+       ======================== */
     const btnConnect = document.getElementById('btnConnect');
     const cfgCom = document.getElementById('cfg-com');
     const cfgBaud = document.getElementById('cfg-baud');
@@ -256,27 +420,33 @@ document.addEventListener("DOMContentLoaded", () => {
     btnConnect.addEventListener('click', () => {
         const com = cfgCom.value;
         const baud = cfgBaud.value;
-        const format = cfgFormat.value;
+        // const format = cfgFormat.value; // เก็บไว้ใช้ตอน parse ข้อมูล
 
-        // 1. Log ครบทุกค่า (COM, Baud, Format)
-        logToConsole(`Connected to <b>${com}</b> @ <b>${baud}</b> baud (Format: <b>${format}</b>)`, 'success');
-        
-        // 2. เคลียร์ค่า Input ใน Config (ตามที่ขอ "เหมือน add widget")
+        // แทนที่จะ Log เอง เราส่งไปให้ Python ทำงานครับ
+        socket.emit('connect_serial', { port: com, baud: baud });
+
+        // เคลียร์ค่า Input ตามที่คุณต้องการ (เหมือน Add Widget)
         cfgCom.value = "";
         cfgBaud.value = "";
-        // format อาจจะไม่ต้องเคลียร์เพราะเป็น select แต่ถ้าอยากให้ reset ก็ทำได้:
         // cfgFormat.selectedIndex = 0; 
     });
     
-    // D. Simulator Send Data Logic
+    /* ========================
+       D. Simulator Send Data Logic (แบบใช้งานจริง)
+       ======================== */
     document.getElementById('btnSend').addEventListener('click', () => {
         const data = simInput.value; // ดึงจากช่อง Sim Input
+        
         if(data.trim() !== "") {
-            // 1. ส่งข้อมูลไปแสดงที่ Console Log (เสมือนรับ Data เข้ามา)
-            logToConsole(`RX: ${data}`); 
+            // 1. จำลองว่ามีข้อมูลเข้ามา (เรียกใช้ Logic เดียวกับของจริง)
+            // ทำแบบนี้ ข้อมูลจาก Sim จะไปโผล่ที่กราฟได้เหมือนของจริงเลยครับ
+            logToConsole(`RX (Sim): ${data}`);
+
+            updateDashboard(data);
             
-            // 2. เคลียร์ค่า Sim Input (เพื่อให้พร้อมกรอกค่าใหม่)
-            simInput.value = ""; 
+            // 2. เคลียร์ค่า Sim Input 
+            simInput.value = "";
+            document.getElementById('sim-input').value = "";
         }
     });
 

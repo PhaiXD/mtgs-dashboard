@@ -2,8 +2,8 @@
 
 /* ... (Variables & Basic Styles เหมือนเดิม) ... */
 :root {
-    --bg-gradient-start: #0c092a; 
-    --bg-gradient-end:   #030208; 
+    --bg-gradient-start: #1c1c1c; 
+    --bg-gradient-end:   #1c1c1c; 
     --bg-panel:     rgba(30, 35, 70, 0.6); 
     --border-panel: rgba(255, 255, 255, 0.1);
     --bg-input:     rgba(0, 0, 0, 0.4); 
@@ -131,6 +131,61 @@ body {
 }
 .widget-settings-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.1); }
 
+.widget-body {
+    /* 1. จัดกึ่งกลาง */
+    display: flex;
+    justify-content: center; /* กึ่งกลางแนวนอน */
+    align-items: center;     /* กึ่งกลางแนวตั้ง */
+    text-align: center;      
+    height: 100%;            /* ยืดความสูงให้เต็มพื้นที่ */
+    width: 100%;
+    
+    /* 2. ปรับแต่งตัวอักษรให้ดูเป็น Data */
+    font-size: 2.2rem;       /* ตัวใหญ่สะใจ */
+    font-weight: 600;
+    color: #ffffff;
+    overflow: hidden;        /* ถ้าเลขยาวเกินให้ซ่อนส่วนเกิน */
+    position: relative;
+}
+
+.widget-index-label {
+    position: absolute;
+    bottom: 5px;
+    left: 8px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4); /* สีจางๆ ไม่แย่งซีน */
+    font-family: 'Consolas', monospace;
+    pointer-events: none; /* คลิกทะลุได้ */
+}
+
+/* เพิ่มใหม่: สำหรับกราฟและแผนที่ */
+.chart-container, .map-container, .table-container {
+    width: 95%;
+    height: 90%;
+}
+
+/* ตารางข้อมูล */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.data-table th, .data-table td {
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 4px;
+    text-align: center;
+}
+.data-table th { background: rgba(255,255,255,0.1); color: var(--accent); }
+
+/* แถม: ถ้าตัวอักษรเล็กกว่านี้สำหรับหน่วย (Unit) */
+.widget-unit {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin-left: 5px;
+    align-self: flex-end; /* ให้หน่วยอยู่ชิดด้านล่างของตัวเลข */
+    margin-bottom: 8px;
+}
+
 /* --- 2. MODAL & ANIMATION --- */
 .modal-overlay {
     position: fixed;
@@ -249,20 +304,34 @@ body {
 
 /* Delete Button (Bottom Right) */
 .modal-footer {
-    display: flex; justify-content: flex-end; margin-top: 25px;
+    display: flex;
+    justify-content: center; /* จัดให้อยู่ตรงกลาง */
+    margin-top: 25px;
+    padding: 0 10px; /* เว้นระยะขอบซ้าย-ขวา นิดหน่อยตามที่ขอ */
 }
 .btn-delete-modal {
     background: transparent;
     border: 1px solid #ef4444;
     color: #ef4444;
-    padding: 6px 12px;
+    padding: 10px 12px; /* เพิ่มความสูงปุ่มอีกนิดให้กดง่าย */
     border-radius: 6px;
     font-size: 0.9rem;
     cursor: pointer;
-    display: flex; align-items: center; gap: 6px;
+    
+    /* ทำให้ยืดเต็มพื้นที่ */
+    width: 100%; 
+    display: flex;
+    justify-content: center; /* จัดตัวหนังสือและไอคอนให้อยู่กลางปุ่ม */
+    align-items: center;
+    gap: 8px;
+    
     transition: 0.2s;
 }
-.btn-delete-modal:hover { background: #ef4444; color: white; }
+
+.btn-delete-modal:hover {
+    background: #ef4444;
+    color: white;
+}
 
 /* 🔑 เพิ่ม Animation ให้ปุ่มทุกประเภท */
 button, .btn-primary, .btn-action, .btn-file, .btn-toggle-sidebar, .widget-settings-btn, .close-modal-btn, .edit-icon {

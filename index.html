@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <link rel="stylesheet" href="./style.css"> 
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
 
@@ -145,8 +147,8 @@
             </div>
 
             <div class="modal-row id-wrapper">
-                <span class="modal-label">id: 0 -></span>
-                <input type="text" id="modalWidgetId" class="input-gray-box" placeholder="velo">
+                <span class="modal-label">index: </span>
+                <input type="text" id="modalWidgetId" class="input-gray-box" placeholder="0">
             </div>
 
             <div class="modal-divider"></div>
@@ -160,7 +162,7 @@
 
             <div class="modal-row">
                 <span class="modal-label">Data format</span>
-                <input type="text" id="modalWidgetFormat" class="input-gray-box" placeholder="{velo}m/s">
+                <input type="text" id="modalWidgetFormat" class="input-gray-box" placeholder="{0}m/s">
             </div>
 
             <div class="modal-footer">
@@ -173,7 +175,11 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/gridstack/dist/gridstack-all.js"></script>
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script src="./script.js"></script>
 
 </body>
