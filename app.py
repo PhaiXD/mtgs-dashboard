@@ -13,52 +13,46 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 ser = None
 is_connected = False
 
-# ฟังก์ชันอ่านข้อมูลจาก Serial (ทำงานอยู่เบื้องหลังตลอดเวลา)
+# ฟังก์ชันอ่านข้อมูลจาก Serial (Background Thread)
 def read_from_serial():
     global ser, is_connected
     while is_connected and ser and ser.is_open:
         try:
             if ser.in_waiting > 0:
-                # อ่านข้อมูลแล้วแปลงเป็นตัวหนังสือ
+                # อ่านข้อมูล
                 raw_data = ser.readline().decode('utf-8', errors='ignore').strip()
-                
-                # ส่งข้อมูลไปที่หน้าจอ (Event ชื่อ 'serial_data')
-                socketio.emit('serial_data', {'data': raw_data})
-                
-            time.sleep(0.01) # พักนิดนึงไม่ให้กิน CPU เกินไป
+                if raw_data:
+                    socketio.emit('serial_data', {'data': raw_data})
+            time.sleep(0.01)
         except Exception as e:
             print(f"Error reading: {e}")
             is_connected = False
-            socketio.emit('log_message', {'msg': f"Error: {str(e)}", 'type': 'error'})
+            socketio.emit('log_message', {'msg': f"Connection Lost: {str(e)}", 'type': 'error'})
+            break
 
-# 1. หน้าแรก (โหลด index.html)
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# 2. รับคำสั่ง Connect จากหน้าจอ (Frontend)
+# 1. เชื่อมต่อ Serial
 @socketio.on('connect_serial')
 def handle_connect_serial(data):
     global ser, is_connected
     port = data.get('port')
     baud = data.get('baud')
     
-    # แจ้งหน้าจอก่อนว่ากำลังพยายามเชื่อมต่อ
-    emit('log_message', {'msg': f"Connecting to {port} at {baud}...", 'type': 'normal'})
+    emit('log_message', {'msg': f"Connecting to {port}...", 'type': 'normal'})
 
     try:
-        # ปิดอันเก่าถ้าเปิดค้างไว้
         if ser and ser.is_open:
             ser.close()
 
-        # เชื่อมต่อ Serial จริงๆ ตรงนี้
         ser = serial.Serial(port, int(baud), timeout=1)
         is_connected = True
         
-        # ส่งข้อความความสำเร็จกลับไปหน้าจอ
         emit('log_message', {'msg': f"Successfully connected to {port}!", 'type': 'success'})
         
-        # เริ่มทำงานเบื้องหลังเพื่ออ่านข้อมูลทันที
+        # เริ่ม Thread อ่านข้อมูล
         thread = threading.Thread(target=read_from_serial)
         thread.daemon = True
         thread.start()
@@ -67,7 +61,22 @@ def handle_connect_serial(data):
         is_connected = False
         emit('log_message', {'msg': f"Connection Failed: {str(e)}", 'type': 'error'})
 
-# รัน Server
+# 2. ส่งคำสั่ง Uplink (เพิ่มใหม่)
+@socketio.on('send_command')
+def handle_send_command(data):
+    global ser, is_connected
+    cmd = data.get('cmd')
+    
+    if is_connected and ser and ser.is_open:
+        try:
+            # ส่งข้อมูลเข้าบอร์ด (เติม \n ตามมาตรฐาน)
+            ser.write((cmd + '\n').encode('utf-8'))
+            emit('log_message', {'msg': f"TX: {cmd}", 'type': 'success'}) # สีเขียวอ่อน
+        except Exception as e:
+            emit('log_message', {'msg': f"TX Error: {str(e)}", 'type': 'error'})
+    else:
+        emit('log_message', {'msg': "Error: Not connected to any device.", 'type': 'error'})
+
 if __name__ == '__main__':
     print("Starting Server...")
     socketio.run(app, debug=True, port=5000)

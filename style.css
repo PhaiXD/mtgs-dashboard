@@ -1,431 +1,162 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;600&family=Kanit:wght@300;400;600&display=swap');
 
-/* ... (Variables & Basic Styles เหมือนเดิม) ... */
 :root {
-    --bg-gradient-start: #1c1c1c; 
-    --bg-gradient-end:   #1c1c1c; 
-    --bg-panel:     rgba(30, 35, 70, 0.6); 
-    --border-panel: rgba(255, 255, 255, 0.1);
-    --bg-input:     rgba(0, 0, 0, 0.4); 
-    --text-main:    #f1f5f9;
-    --text-muted:   #94a3b8;
-    --text-desc:    #818cf8;
+    /* Theme: Dark/Grey Scale */
+    --bg-body:      #0f0f0f;
+    --bg-panel:     #1e1e1e; 
+    --bg-header:    #252525;
+    --border-color: #333;
+    
+    --bg-input:     #141414;
+    --text-main:    #e0e0e0;
+    --text-muted:   #a0a0a0;
+    
     --accent:       #38bdf8;
-    --accent-glow:  rgba(56, 189, 248, 0.3);
+    --danger:       #ef4444;
     
     --sidebar-width: 280px; 
     --topbar-height: 50px;
-    --console-height: 180px; 
-    --radius: 12px;
+    --radius: 6px;
 }
 
 * { box-sizing: border-box; }
 
 body {
     margin: 0;
-    background: radial-gradient(circle at top left, var(--bg-gradient-start), var(--bg-gradient-end));
-    background-attachment: fixed;
-    background-size: cover;
+    background-color: var(--bg-body);
     font-family: 'IBM Plex Sans Thai', 'Kanit', sans-serif;
     color: var(--text-main);
     overflow: hidden;
 }
 
-/* Scrollbar Customization */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+::-webkit-scrollbar-track { background: #1a1a1a; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+::-webkit-resizer { background-color: #333; }
 
-/* Layout Grid */
+/* Layout */
 .app-container {
     display: grid;
     height: 100vh;
     grid-template-columns: var(--sidebar-width) 1fr;
-    grid-template-rows: var(--topbar-height) 1fr var(--console-height);
+    grid-template-rows: var(--topbar-height) 1fr auto; 
     grid-template-areas: "topbar topbar" "sidebar dashboard" "sidebar console";
-    gap: 12px; padding: 12px;
+    gap: 8px; padding: 8px;
     transition: grid-template-columns 0.3s ease;
 }
-
 .app-container.sidebar-closed { grid-template-columns: 0px 1fr; }
-.app-container.sidebar-closed .sidebar { opacity: 0; pointer-events: none; transform: translateX(-20px); }
+.app-container.sidebar-closed .sidebar { opacity: 0; transform: translateX(-20px); pointer-events: none; }
 
-/* Sidebar & Sections */
-.sidebar {
-    grid-area: sidebar;
-    background: var(--bg-panel);
-    border-radius: var(--radius);
-    border: 1px solid var(--border-panel);
-    backdrop-filter: blur(10px);
-    display: flex; flex-direction: column; overflow: hidden; min-width: 280px; transition: 0.3s;
+/* Panels */
+.sidebar, .topbar {
+    background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius);
 }
-.sidebar-content { overflow-y: auto; flex-grow: 1; }
 
-.section { border-bottom: 1px solid var(--border-panel); }
+/* Sidebar Scroll */
+.sidebar { grid-area: sidebar; display: flex; flex-direction: column; overflow: hidden; height: 100%; }
+.sidebar-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 20px; }
+
+.topbar { grid-area: topbar; display: flex; align-items: center; padding: 0 15px; background: var(--bg-header); }
+.app-title { font-weight: 600; color: #fff; font-size: 1rem; }
+.btn-toggle-sidebar { background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; margin-right: 15px; }
+.btn-toggle-sidebar:hover { color: #fff; }
+
+/* Sections */
+.section { border-bottom: 1px solid var(--border-color); }
 .section-header {
-    padding: 12px 15px; cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--text-main);
-    display: flex; align-items: center; background: rgba(255,255,255,0.02);
+    padding: 12px 15px; cursor: pointer; font-size: 0.85rem; font-weight: 600; 
+    color: var(--text-muted); display: flex; align-items: center; background: rgba(255,255,255,0.02);
 }
-.section-header:hover { background: rgba(255,255,255,0.05); }
-.section-header .arrow-icon { margin-right: 8px; transition: 0.2s; font-size: 0.7rem;}
-.section-header.active .arrow-icon { transform: rotate(90deg); color: var(--accent); }
-.section-wrapper { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s ease-out; }
+.section-header:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.section-header.active { color: #fff; border-left: 3px solid var(--accent); background: rgba(56, 189, 248, 0.05); }
+.section-wrapper { display: grid; grid-template-rows: 0fr; transition: 0.3s ease; }
 .section-wrapper.open { grid-template-rows: 1fr; }
 .section-inner { overflow: hidden; padding: 0 15px; }
-.section-wrapper.open .section-inner { padding-top: 15px; padding-bottom: 15px; }
+.section-wrapper.open .section-inner { padding: 15px; }
 
-/* Topbar */
-.topbar {
-    grid-area: topbar;
-    background: var(--bg-panel); border: 1px solid var(--border-panel); border-radius: var(--radius);
-    display: flex; align-items: center; padding: 0 12px;
+/* Inputs & Buttons */
+input, select, textarea {
+    background-color: var(--bg-input); border: 1px solid var(--border-color);
+    color: var(--text-main); border-radius: 4px; padding: 8px; width: 100%;
+    font-family: 'Consolas', monospace; font-size: 0.9rem; margin-bottom: 5px;
 }
-.btn-toggle-sidebar { background: transparent; border: none; color: var(--text-main); font-size: 1.2rem; cursor: pointer; padding: 6px; }
+/* 2. FIX SIM INPUT RESIZE: ห้ามขยาย */
+textarea { resize: none; height: 80px; }
 
-/* =========================================
-   GRIDSTACK WIDGET STYLES (NEW)
-   ========================================= */
-.dashboard {
-    grid-area: dashboard;
-    overflow-y: auto; /* ให้ Grid Scroll ได้ */
-    padding-right: 5px;
-}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
 
-/* Override GridStack to match theme */
-.grid-stack-item-content {
-    background: var(--bg-panel) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-panel);
-    border-radius: var(--radius);
-    color: var(--text-main);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    /* Flex เพื่อจัด layout ภายใน widget */
-    display: flex;
-    flex-direction: column; 
-    overflow: hidden;
-}
+.btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 8px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 5px; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-action.send { background: linear-gradient(90deg, #d97706, #ea580c); color: white; border: none; padding: 8px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 5px; }
+.btn-action.send:hover { filter: brightness(1.1); }
 
-/* Widget Header (Title & Delete Btn) */
-.widget-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    /* 🔑 KEY: เปลี่ยน Cursor ให้รู้ว่าลากได้เฉพาะตรงนี้ */
-    cursor: grab; 
-}
-.widget-header:active { cursor: grabbing; }
-
-.widget-settings-btn {
-    background: transparent;
-    color: var(--text-muted);
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    padding: 4px;
-    border-radius: 4px;
-    transition: 0.2s;
-}
-.widget-settings-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.1); }
-
-.widget-body {
-    /* 1. จัดกึ่งกลาง */
-    display: flex;
-    justify-content: center; /* กึ่งกลางแนวนอน */
-    align-items: center;     /* กึ่งกลางแนวตั้ง */
-    text-align: center;      
-    height: 100%;            /* ยืดความสูงให้เต็มพื้นที่ */
-    width: 100%;
-    
-    /* 2. ปรับแต่งตัวอักษรให้ดูเป็น Data */
-    font-size: 2.2rem;       /* ตัวใหญ่สะใจ */
-    font-weight: 600;
-    color: #ffffff;
-    overflow: hidden;        /* ถ้าเลขยาวเกินให้ซ่อนส่วนเกิน */
-    position: relative;
-}
-
-.widget-index-label {
-    position: absolute;
-    bottom: 5px;
-    left: 8px;
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.4); /* สีจางๆ ไม่แย่งซีน */
-    font-family: 'Consolas', monospace;
-    pointer-events: none; /* คลิกทะลุได้ */
-}
-
-/* เพิ่มใหม่: สำหรับกราฟและแผนที่ */
-.chart-container, .map-container, .table-container {
-    width: 95%;
-    height: 90%;
-}
-
-/* ตารางข้อมูล */
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-}
-.data-table th, .data-table td {
-    border: 1px solid rgba(255,255,255,0.2);
-    padding: 4px;
-    text-align: center;
-}
-.data-table th { background: rgba(255,255,255,0.1); color: var(--accent); }
-
-/* แถม: ถ้าตัวอักษรเล็กกว่านี้สำหรับหน่วย (Unit) */
-.widget-unit {
-    font-size: 1rem;
-    color: var(--text-muted);
-    margin-left: 5px;
-    align-self: flex-end; /* ให้หน่วยอยู่ชิดด้านล่างของตัวเลข */
-    margin-bottom: 8px;
-}
-
-/* --- 2. MODAL & ANIMATION --- */
-.modal-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.4); /* สีพื้นหลังจางๆ */
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    
-    /* Animation State: เริ่มต้นซ่อน */
-    opacity: 0;
-    visibility: hidden;
-    backdrop-filter: blur(0px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Class สำหรับเปิด Modal */
-.modal-overlay.active {
-    opacity: 1;
-    visibility: visible;
-    backdrop-filter: blur(8px); /* 🔑 KEY: Background Blur */
-}
-
-.modal-content {
-    background: #1e2346; /* สีเดียวกับ Panel แต่ทึบกว่านิดหน่อย */
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    padding: 24px;
-    width: 320px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    transform: scale(0.95);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    position: relative;
-    color: var(--text-main);
-}
-.modal-overlay.active .modal-content { transform: scale(1); }
-
-/* --- 3. MODAL ELEMENT STYLES (ตามภาพวาด) --- */
-
-/* Header: Title Edit */
-.modal-header-row {
-    display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;
-}
-.title-edit-wrapper {
-    display: flex; align-items: center; gap: 8px; border-bottom: 2px solid var(--text-main); padding-bottom: 2px;
-}
-.modal-widget-name {
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent; /* ซ่อนเส้นขีด */
-    color: var(--text-main);
-    font-size: 1.5rem;
-    font-weight: 600;
-    width: 180px;
-    outline: none;
-    font-family: inherit;
-    pointer-events: none; /* 🔑 ห้ามคลิกที่ตัวหนังสือโดยตรง */
-    transition: all 0.2s;
-}
-.modal-widget-name.editable {
-    border-bottom: 2px solid var(--text-main); /* โชว์เส้นขีด */
-    pointer-events: auto; /* ยอมให้คลิก/พิมพ์ได้ */
-    background: rgba(255, 255, 255, 0.05); /* ใส่พื้นหลังจางๆ ให้รู้ว่าเป็นช่อง */
-    border-radius: 4px;
-    padding: 0 5px;
-}
-.edit-icon {
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 1rem;
-    transition: 0.2s;
-    padding: 5px; /* เพิ่มพื้นที่กด */
-    border-radius: 50%;
-}
-.edit-icon:hover {
-    background: rgba(255,255,255,0.1);
-    color: var(--text-main);
-}
-.close-modal-btn {
-    background: transparent; border: none; color: #ef4444; font-size: 1.5rem; cursor: pointer; line-height: 1;
-}
-
-/* Form Rows */
-.modal-row {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 15px;
-}
-.modal-label { font-size: 1rem; color: var(--text-main); white-space: nowrap; }
-
-/* Input Gray Box Style */
-.input-gray-box {
-    background: #94a3b8; /* สีเทาตามภาพ */
-    color: #0f172a; /* Text สีเข้ม */
-    border: none;
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-weight: 600;
-    width: 100%;
-    outline: none;
-    font-family: 'Consolas', monospace;
-}
-.id-wrapper { display: flex; align-items: center; gap: 5px; }
-
-/* Divider */
-.modal-divider {
-    height: 1px; background: rgba(255,255,255,0.1); margin: 15px 0; width: 100%;
-}
-
-/* Select Dropdown */
-.modal-select {
-    width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--text-main);
-    background: transparent; color: var(--text-main); margin-bottom: 15px;
-    font-size: 1rem; cursor: pointer;
-}
-.modal-select option { background: #1e2346; color: var(--text-main); }
-
-/* Delete Button (Bottom Right) */
-.modal-footer {
-    display: flex;
-    justify-content: center; /* จัดให้อยู่ตรงกลาง */
-    margin-top: 25px;
-    padding: 0 10px; /* เว้นระยะขอบซ้าย-ขวา นิดหน่อยตามที่ขอ */
-}
-.btn-delete-modal {
-    background: transparent;
-    border: 1px solid #ef4444;
-    color: #ef4444;
-    padding: 10px 12px; /* เพิ่มความสูงปุ่มอีกนิดให้กดง่าย */
-    border-radius: 6px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    
-    /* ทำให้ยืดเต็มพื้นที่ */
-    width: 100%; 
-    display: flex;
-    justify-content: center; /* จัดตัวหนังสือและไอคอนให้อยู่กลางปุ่ม */
-    align-items: center;
-    gap: 8px;
-    
-    transition: 0.2s;
-}
-
-.btn-delete-modal:hover {
-    background: #ef4444;
-    color: white;
-}
-
-/* 🔑 เพิ่ม Animation ให้ปุ่มทุกประเภท */
-button, .btn-primary, .btn-action, .btn-file, .btn-toggle-sidebar, .widget-settings-btn, .close-modal-btn, .edit-icon {
-    transition: transform 0.1s ease, background 0.2s, filter 0.2s;
-}
-
-/* เวลากดค้าง (Click) ให้ยุบลงเล็กน้อย */
-button:active, .btn-primary:active, .btn-action:active, .edit-icon:active {
-    transform: scale(0.92); /* ย่อลงเหลือ 92% */
-}
-
-/* เวลาเอาเมาส์ชี้ ให้เด้งขึ้นนิดเดียว (Optional) */
-.btn-primary:hover, .btn-action:hover {
-    transform: translateY(-2px);
-}
-
-/* =========================================
-   CONSOLE & FORMS
-   ========================================= */
+/* Console */
 .console {
-    grid-area: console;
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-panel);
-    border-radius: var(--radius);
-    overflow: hidden; 
-    display: flex; 
-    flex-direction: column; 
-    position: relative;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+    grid-area: console; background-color: #000; border: 1px solid var(--border-color); border-radius: var(--radius);
+    display: flex; flex-direction: column; position: relative;
+    height: var(--console-height, 180px); min-height: 0; transition: height 0.1s;
 }
-.console-resizer {
-    width: 100%; height: 6px; background: rgba(255,255,255,0.05);
-    cursor: row-resize; position: absolute; top: 0; left: 0; z-index: 20;
-}
+.console-resizer { width: 100%; height: 5px; background: #333; cursor: row-resize; position: absolute; top: 0; left: 0; z-index: 50; transition: 0.2s; }
 .console-resizer:hover { background: var(--accent); }
+.console.collapsed { height: 10px !important; border: none; background: transparent; overflow: visible; }
+.console.collapsed .console-output, .console.collapsed .console-input-area, .console.collapsed .console-header { display: none; }
+.console.collapsed .console-resizer { top: auto; bottom: 0; height: 12px; background: #333; border-radius: 6px 6px 0 0; }
+.console.collapsed .console-resizer:hover { background: var(--accent); box-shadow: 0 -5px 15px rgba(56, 189, 248, 0.4); }
 
-#btnClearConsole {
-    position: absolute;
-    right: 0;
-    margin: 15px 10px;
-}
-
-/* Clear Icon */
-.icon-clear {
-    width: 16px; height: 16px; cursor: pointer; opacity: 0.7; transition: 0.2s; filter: invert(1);
-}
+.console-header { position: absolute; top: 8px; right: 10px; z-index: 10; }
+.icon-clear { width: 16px; opacity: 0.5; cursor: pointer; filter: invert(1); transition: 0.2s; }
 .icon-clear:hover { opacity: 1; transform: scale(1.1); }
 
 .console-output {
-    flex-grow: 1; overflow-y: auto; padding: 15px; margin-top: 6px;
-    font-family: 'Consolas', monospace; font-size: 13px; color: var(--text-muted);
+    flex-grow: 1; overflow-y: auto; padding: 15px; margin-top: 10px;
+    font-family: 'Consolas', monospace; font-size: 13px; color: #ccc;
 }
-.log-line { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 2px;}
-.timestamp { color: var(--accent); margin-right: 8px; opacity: 0.8; font-size: 0.8em; }
-.log-msg { color: var(--text-main); }
-.log-info { color: #86efac; }
-.console-input-area {
-    background-color: rgba(0, 0, 0, 0.2); display: flex; align-items: center;
-    padding: 8px 12px; border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-.console-input-area input {
-    background: transparent; border: none; color: var(--text-main); width: 100%; font-family: 'Consolas', monospace;
-}
-input:focus { outline: none; }
+.log-line { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 2px 0; word-wrap: break-word; }
+/* Timestamp Color */
+.log-time { color: var(--accent); margin-right: 8px; opacity: 0.8; }
 
-/* Forms Styling */
-.form-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.form-group label { font-size: 0.85rem; color: var(--text-main); }
-.form-group-stack { margin-bottom: 15px; }
-.form-group-stack label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-main); }
+.console-input-area { background: #111; padding: 6px 10px; border-top: 1px solid #333; display: flex; align-items: center; gap: 8px; }
+.prompt-char { color: var(--accent); font-weight: bold; }
+.console-input-area input { background: transparent; border: none; color: #fff; padding: 0; margin: 0; }
 
-input[type="text"], select, textarea {
-    background-color: var(--bg-input); border: 1px solid rgba(255,255,255,0.1);
-    color: var(--text-main); border-radius: 6px; padding: 6px 10px; font-size: 0.9rem; width: 100%; font-family: inherit;
-}
-textarea { resize: none; height: 80px; }
-.config-form input, .config-form select { width: 140px; text-align: right; }
+/* Dashboard */
+.dashboard { grid-area: dashboard; overflow-y: auto; padding-right: 5px; }
+.grid-stack-item-content { background: var(--bg-panel) !important; border: 1px solid var(--border-color); border-radius: var(--radius); color: #fff; display: flex; flex-direction: column; overflow: hidden; }
+.widget-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.03); cursor: grab; border-bottom: 1px solid var(--border-color); height: 35px; flex-shrink: 0; }
+.widget-title { font-size: 0.85rem; font-weight: 500; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.widget-settings-btn { background: transparent; border: none; color: #666; cursor: pointer; font-size: 0.9rem; }
+.widget-settings-btn:hover { color: #fff; }
+.widget-body { flex-grow: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; width: 100%; height: 100%; }
+.content-area { width: 100% !important; height: 100% !important; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; color: #fff; font-size: 2rem; font-weight: 600; }
+canvas { max-width: 100%; max-height: 100%; }
 
-.btn-primary, .btn-action {
-    color: white; border: none; padding: 8px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 5px;
-}
-.btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%); }
-.btn-primary:hover { filter: brightness(1.15); }
-.btn-action.send { background: linear-gradient(90deg, #f59e0b, #ea580c); }
-.btn-action.send:hover { filter: brightness(1.15); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-family: 'Consolas', monospace; }
+.data-table th, .data-table td { border: 1px solid #444; padding: 4px 8px; text-align: left; }
+.data-table th { background: rgba(255,255,255,0.05); color: var(--accent); }
+.data-table td { color: #ddd; }
+.widget-index-label { position: absolute; bottom: 4px; left: 8px; font-size: 0.7rem; color: #555; font-family: monospace; pointer-events: none; }
 
-/* 🔑 Clear Icon Style */
-.icon-clear {
-    width: 16px; 
-    height: 16px;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: 0.2s;
-    /* Invert สีดำให้เป็นขาว */
-    filter: invert(1);
-}
-.icon-clear:hover { opacity: 1; transform: scale(1.1); }
+/* Modal */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: 0.2s; backdrop-filter: blur(4px); }
+.modal-overlay.active { opacity: 1; visibility: visible; }
+.modal-content { background: #1a1a1a; border: 1px solid #444; border-radius: 8px; padding: 20px; width: 340px; transform: scale(0.95); transition: 0.2s; box-shadow: 0 20px 50px rgba(0,0,0,0.8); display: flex; flex-direction: column; }
+.modal-overlay.active .modal-content { transform: scale(1); }
+.modal-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-widget-name { background: transparent; border: none; font-size: 1.2rem; font-weight: 600; color: #fff; width: 200px; border-bottom: 1px solid transparent; padding: 2px; }
+.modal-widget-name.editable { border-bottom-color: var(--accent); background: #222; }
+.close-modal-btn { background: transparent; border: none; color: var(--danger) !important; font-size: 1.4rem; cursor: pointer; line-height: 1; }
+.close-modal-btn:hover { color: #ff6b6b !important; transform: scale(1.1); }
+.dynamic-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.modal-label-sm { font-size: 0.8rem; color: #888; margin-bottom: 4px; display: block; }
+.helper-text { font-size: 0.75rem; color: #666; font-style: italic; margin-bottom: 8px; display: block; }
+.btn-add-row { background: transparent; border: 1px dashed #555; color: #888; width: 100%; padding: 6px; cursor: pointer; border-radius: 4px; font-size: 0.85rem; margin-top: 5px; }
+.btn-add-row:hover { border-color: var(--accent); color: var(--accent); }
+.btn-icon-sm { width: 32px; height: 32px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger); border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+.btn-icon-sm:hover { background: var(--danger); color: white; }
+.btn-delete-modal { background: transparent; border: 1px solid var(--danger); color: var(--danger); width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; gap: 8px; margin-top: 20px; font-weight: 600; }
+.btn-delete-modal:hover { background: var(--danger); color: white; }
+.modal-footer { margin-top: auto; }
