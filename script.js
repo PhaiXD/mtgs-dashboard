@@ -13,7 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const createWidgetHTML = (title, type, config = {}) => {
         const configStr = JSON.stringify(config);
         let label = "ID: -";
-        if(config.indexes && config.indexes.length > 0) label = `ID: ${config.indexes.join(',')}`;
+        if(type === 'Text') label = "Format Based";
+        else if(config.indexes && config.indexes.length > 0) label = `ID: ${config.indexes.join(',')}`;
 
         return `
             <div class="widget-header">
@@ -39,22 +40,20 @@ document.addEventListener("DOMContentLoaded", () => {
         
         if (!currentConfig.indexes) currentConfig.indexes = ["0"];
         if (!currentConfig.format) currentConfig.format = "{0}";
-        if (!currentConfig.maxPoints) currentConfig.maxPoints = 20; // Default 20
+        if (!currentConfig.maxPoints) currentConfig.maxPoints = 20;
 
         // --- TYPE: TEXT ---
         if (type === 'Text') {
             dynamicArea.innerHTML += `
                 <div class="form-group-stack">
                     <label style="color:#aaa; font-size:0.8rem;">Data Format</label>
-                    <span class="helper-text">Format: {0} for first index. Use \\n for newline.</span>
-                    <input type="text" id="inp-format" value="${currentConfig.format}" placeholder="Temp: {0} C">
+                    <span class="helper-text">
+                        Directly use <b>{index}</b> to display data.<br>
+                        Example: <code>Velo: {0} m/s \\n Alt: {1} m</code>
+                    </span>
+                    <textarea id="inp-format" rows="3" style="height:auto;">${currentConfig.format}</textarea>
                 </div>
-                <label style="color:#aaa; font-size:0.8rem; display:block; margin-top:10px;">Data Indexes</label>
-                <div id="index-container"></div>
-                <button class="btn-add-row" onclick="addIndexRow()">+ Add Index</button>
             `;
-            const container = document.getElementById('index-container');
-            currentConfig.indexes.forEach(val => addIndexRow(val, container));
         } 
         // --- TYPE: GRAPH ---
         else if (type === 'Graph') {
@@ -65,7 +64,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span style="font-size:0.75rem; color:#666; font-style:italic;">X-Axis is Time.</span>
                     <input type="number" id="inp-y" value="${idxY}" placeholder="0">
                 </div>
-                <!-- 4. เพิ่มช่องตั้งค่า Max Points -->
                 <div class="form-group-stack">
                     <label style="color:#aaa; font-size:0.8rem;">Max Data Points</label>
                     <input type="number" id="inp-max-points" value="${currentConfig.maxPoints}" placeholder="20">
@@ -93,19 +91,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Helper: Add Index Row
-    window.addIndexRow = (value = "0", targetContainer = null) => {
-        const container = targetContainer || document.getElementById('index-container');
-        const div = document.createElement('div');
-        div.className = 'dynamic-row';
-        div.innerHTML = `
-            <input type="number" class="inp-multi-index" value="${value}" placeholder="idx">
-            <button class="btn-icon-sm" onclick="this.parentElement.remove()" title="Remove">
-                <i class="fa-solid fa-minus"></i>
-            </button>
-        `;
-        container.appendChild(div);
-    }
     // Helper: Add Table Row
     window.addTableRow = (label = "Data", idx = "0", targetContainer = null) => {
         const container = targetContainer || document.getElementById('table-rows-container');
@@ -150,14 +135,12 @@ document.addEventListener("DOMContentLoaded", () => {
             if (type === 'Text') {
                 const fmt = document.getElementById('inp-format');
                 if(fmt) newConfig.format = fmt.value;
-                document.querySelectorAll('.inp-multi-index').forEach(inp => newConfig.indexes.push(inp.value));
             } 
             else if (type === 'Graph') {
                 const y = document.getElementById('inp-y');
                 const max = document.getElementById('inp-max-points');
                 newConfig.indexes.push('time'); 
                 if(y) newConfig.indexes.push(y.value);
-                // Save Max Points
                 if(max) newConfig.maxPoints = parseInt(max.value) || 20;
             } 
             else if (type === 'Map') {
@@ -183,7 +166,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Re-render UI
             let label = "ID: -";
-            if(newConfig.indexes.length > 0) label = `ID: ${newConfig.indexes.join(',')}`;
+            if (type === 'Text') label = "Format Based";
+            else if(newConfig.indexes.length > 0) label = `ID: ${newConfig.indexes.join(',')}`;
+            
             body.innerHTML = `<div class="content-area" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">Waiting...</div><div class="widget-index-label">${label}</div>`;
 
             // Clear Old Instances
@@ -191,7 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
             body.setAttribute('id', wId);
             if(widgetInstances[wId]) {
                  if(widgetInstances[wId].destroy) widgetInstances[wId].destroy();
-                 if(widgetInstances[wId].remove) widgetInstances[wId].remove(); // for map
+                 if(widgetInstances[wId].remove) widgetInstances[wId].remove(); 
                  delete widgetInstances[wId];
             }
         }
@@ -199,11 +184,33 @@ document.addEventListener("DOMContentLoaded", () => {
         currentEditingWidget = null;
     }
 
-    // Events
+    // --- EVENTS ---
     document.getElementById('btnCloseModal').addEventListener('click', closeModal);
-    modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) closeModal();
+
+    /* 🔑 FIX: แก้ปัญหาลากเมาส์หลุดกรอบแล้วเด้งปิด 
+       ต้องกดลง (MouseDown) บนพื้นหลัง และ ปล่อย (Click) บนพื้นหลัง เท่านั้นถึงจะปิด 
+    */
+    let isMouseDownOnOverlay = false;
+
+    modalOverlay.addEventListener('mousedown', (e) => {
+        // เช็คว่าตอนกด กดลงที่พื้นหลังดำๆ จริงๆ หรือไม่
+        if (e.target === modalOverlay) {
+            isMouseDownOnOverlay = true;
+        } else {
+            isMouseDownOnOverlay = false;
+        }
     });
+
+    modalOverlay.addEventListener('click', (e) => {
+        // ปิดก็ต่อเมื่อ: คลิกที่พื้นหลัง AND ตอนเริ่มกดก็กดที่พื้นหลัง
+        if (e.target === modalOverlay && isMouseDownOnOverlay) {
+            closeModal();
+        }
+        // รีเซ็ตค่า
+        isMouseDownOnOverlay = false;
+    });
+
+    // Event อื่นๆ
     selectType.addEventListener('change', () => renderModalInputs(selectType.value, {}));
     document.getElementById('btnDeleteWidget').addEventListener('click', () => {
         if(currentEditingWidget) { grid.removeWidget(currentEditingWidget); closeModal(); }
@@ -229,25 +236,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const consolePanel = document.getElementById('consolePanel');
     const consoleResizer = document.getElementById('consoleResizer');
 
-    // 1. Log function with Timestamp [HH:mm:ss]
     function logToConsole(msg, type='normal') {
         const now = new Date();
         const timeStr = now.toLocaleTimeString('th-TH', { hour12: false });
-        
         const line = document.createElement('div');
         line.className = 'log-line';
         line.style.color = type === 'error' ? '#ef4444' : (type === 'success' ? '#86efac' : '#ccc');
-        
-        // Format: [time] msg
         line.innerHTML = `<span class="log-time">[${timeStr}]</span>${msg}`;
-        
         consoleOut.appendChild(line);
         consoleOut.scrollTop = consoleOut.scrollHeight;
     }
 
     socket.on('log_message', (d) => logToConsole(d.msg, d.type));
     socket.on('serial_data', (d) => {
-        // Log RX format
         logToConsole(`RX: ${d.data}`);
         updateDashboard(d.data);
     });
@@ -273,7 +274,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.style.cursor = 'row-resize';
         e.preventDefault();
     });
-    
     document.addEventListener('mousemove', (e) => {
         if (!isResizing) return;
         const containerH = document.body.clientHeight;
@@ -287,7 +287,6 @@ document.addEventListener("DOMContentLoaded", () => {
             document.documentElement.style.setProperty('--console-height', h + 'px');
         }
     });
-
     document.addEventListener('mouseup', () => {
         isResizing = false;
         document.body.style.cursor = 'default';
@@ -310,11 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('btnSend').addEventListener('click', () => {
         const sim = document.getElementById('sim-input');
         if(sim.value.trim()) {
-            // ไม่ต้อง logToConsole ตรงนี้ซ้ำ เพราะ socket.on('serial_data') จะ log ให้เอง
-            // หรือถ้าจะ log เพื่อให้รู้ว่าเป็น sim ก็ทำได้ แต่ต้องระวังซ้ำซ้อน
-            // แต่เนื่องจาก Sim แค่ trigger update ไม่ได้ยิงเข้า socket ฝั่ง server (ในโค้ดเดิม)
-            // เราเลย log ตรงนี้แหละถูกแล้ว แต่ใส่ Format ให้เหมือนของจริง
-            logToConsole(`RX (Sim): ${sim.value}`);
+            logToConsole(`RX(Sim): ${sim.value}`);
             updateDashboard(sim.value);
             sim.value = "";
         }
@@ -330,7 +325,6 @@ document.addEventListener("DOMContentLoaded", () => {
         header.nextElementSibling.classList.toggle('open');
     }
 
-    // Edit Name Logic
     const btnEditName = document.getElementById('btnEditName');
     const inpName = document.getElementById('modalWidgetName');
     btnEditName.addEventListener('click', () => {
@@ -362,23 +356,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (type === 'Text') {
                 let text = config.format || "{0}";
-                // 3. Fix Data Format: Replace {0}, {1} accurately
-                config.indexes.forEach((idx, i) => {
-                    let val = "NaN";
-                    const dataIdx = parseInt(idx);
-                    if(!isNaN(dataIdx) && dataArray[dataIdx] !== undefined) {
-                        val = dataArray[dataIdx];
+                
+                // --- LOGIC ใหม่: แทนที่ {n} ด้วย dataArray[n] ---
+                text = text.replace(/\{(\d+)\}/g, (match, index) => {
+                    const i = parseInt(index);
+                    if (!isNaN(i) && dataArray[i] !== undefined) {
+                        return dataArray[i]; 
                     }
-                    // Regex replace all occurrences of {i}
-                    text = text.replace(new RegExp(`\\{${i}\\}`, 'g'), val);
+                    return "NaN"; 
                 });
-                // Replace \n with <br>
+
+                // แทนที่ \n ด้วย <br>
                 contentArea.innerHTML = text.replace(/\\n/g, '<br>');
             }
             else if (type === 'Graph') {
                 const idxY = parseInt(config.indexes[1] || "0");
                 const valY = parseFloat(dataArray[idxY]);
-                // Read Max Points config
                 const maxPoints = parseInt(config.maxPoints) || 20;
                 
                 if (!widgetInstances[wId]) {
@@ -398,8 +391,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!isNaN(valY)) {
                     chart.data.labels.push(new Date().toLocaleTimeString());
                     chart.data.datasets[0].data.push(valY);
-                    
-                    // 4. Use Max Points Config
                     while (chart.data.labels.length > maxPoints) { 
                         chart.data.labels.shift(); 
                         chart.data.datasets[0].data.shift(); 
@@ -414,12 +405,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     contentArea.innerHTML = '<div class="map-container" style="height:100%; width:100%;"></div>';
                     const mapDiv = contentArea.querySelector('.map-container');
                     const map = L.map(mapDiv).setView([13.7563, 100.5018], 10);
-                    
-                    // 5. Change Map Color (OpenStreetMap Standard)
                     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        attribution: '&copy; OpenStreetMap'
                     }).addTo(map);
-                    
                     const marker = L.marker([13.7563, 100.5018]).addTo(map);
                     widgetInstances[wId] = { map, marker };
                     setTimeout(() => map.invalidateSize(), 500);
