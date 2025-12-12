@@ -1,19 +1,43 @@
 document.addEventListener("DOMContentLoaded", () => {
     
-    // --- 1. Init ---
+    // --- 1. INITIALIZATION & VARIABLES ---
     const widgetInstances = {}; 
     const grid = GridStack.init({
-        float: true, cellHeight: 100, minRow: 1, margin: 8, column: 12, disableOneColumnMode: true,
-        draggable: { handle: '.widget-header', scroll: true, appendTo: 'body' }
+        float: true,
+        cellHeight: 100,
+        minRow: 1,
+        margin: 8,
+        column: 12,
+        disableOneColumnMode: true,
+        draggable: {
+            handle: '.widget-header',
+            scroll: true,
+            appendTo: 'body'
+        }
     });
 
     const socket = io(); 
 
-    // --- 2. Widget HTML Generator ---
+    // ตัวแปรสำหรับ Database (Client-Side)
+    let db = null;
+    let SQL = null;
+    let isDbRecording = false;
+    let currentDbFileName = "telemetry.sqlite";
+
+    // โหลด SQL.js (WebAssembly)
+    const configSql = { locateFile: filename => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${filename}` };
+    initSqlJs(configSql).then(function(sql) {
+        SQL = sql;
+        console.log("SQL.js Initialized");
+    });
+
+    // --- 2. HELPER FUNCTIONS ---
+
+    // สร้าง HTML ของ Widget
     const createWidgetHTML = (title, type, config = {}) => {
         const configStr = JSON.stringify(config);
         let label = "ID: -";
-        if(type === 'Text') label = "Format Based";
+        if (type === 'Text') label = "Format Based";
         else if(config.indexes && config.indexes.length > 0) label = `ID: ${config.indexes.join(',')}`;
 
         return `
@@ -28,95 +52,198 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     };
 
-    // --- 3. SAVE & LOAD LAYOUT SYSTEM (Client-Side) 💾 ---
-    
+    // ฟังก์ชันดาวน์โหลดไฟล์ (สำหรับ Save Layout / DB)
+    function downloadFile(content, fileName, mimeType) {
+        const a = document.createElement('a');
+        mimeType = mimeType || "application/octet-stream";
+        if (content instanceof Uint8Array) {
+            const blob = new Blob([content], {type: mimeType});
+            a.href = URL.createObjectURL(blob);
+        } else {
+            a.href = `data:${mimeType};charset=utf-8,${encodeURIComponent(content)}`;
+        }
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    // ฟังก์ชัน Log ลง Console หน้าเว็บ
+    const consoleOut = document.getElementById('consoleOutput');
+    function logToConsole(msg, type='normal') {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('th-TH', { hour12: false });
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.style.color = type === 'error' ? '#ef4444' : (type === 'success' ? '#86efac' : '#ccc');
+        line.innerHTML = `<span class="log-time">[${timeStr}]</span>${msg}`;
+        consoleOut.appendChild(line);
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+    }
+
+    // --- 3. LAYOUT MANAGER (SAVE / LOAD) ---
     const btnSaveLayout = document.getElementById('btnSaveLayout');
     const btnLoadLayout = document.getElementById('btnLoadLayout');
     const fileInputLayout = document.getElementById('fileInputLayout');
 
-    // Save Logic (Browser Download)
     btnSaveLayout.addEventListener('click', () => {
         const layoutData = [];
         grid.engine.nodes.forEach(node => {
             const el = node.el;
             const title = el.querySelector('.widget-title').innerText;
             const body = el.querySelector('.widget-body');
-            const type = body.dataset.type;
             let config = {};
             try { config = JSON.parse(body.dataset.config || '{}'); } catch(e) {}
-            layoutData.push({ x: node.x, y: node.y, w: node.w, h: node.h, title: title, type: type, config: config });
+            
+            layoutData.push({ 
+                x: node.x, y: node.y, w: node.w, h: node.h, 
+                title: title, 
+                type: body.dataset.type, 
+                config: config 
+            });
         });
-
-        // สร้างไฟล์ JSON และสั่งดาวน์โหลด
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(layoutData, null, 2));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", "dashboard_layout.json");
-        document.body.appendChild(downloadAnchorNode); // จำเป็นสำหรับ Firefox
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-        
-        logToConsole("Layout saved to your device.", "success");
+        downloadFile(JSON.stringify(layoutData, null, 2), "dashboard_layout.json", "text/json");
+        logToConsole("Layout saved to device.", "success");
     });
 
-    // Load Logic (Trigger Input File)
-    btnLoadLayout.addEventListener('click', () => {
-        fileInputLayout.click(); // จำลองการกดปุ่ม input file ที่ซ่อนอยู่
-    });
+    btnLoadLayout.addEventListener('click', () => fileInputLayout.click());
 
-    // Handle File Selection
     fileInputLayout.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = (ev) => {
             try {
-                const layoutData = JSON.parse(event.target.result);
-                
-                // ล้าง Grid เก่า
+                const layoutData = JSON.parse(ev.target.result);
                 grid.removeAll();
-                
-                // สร้าง Widget ใหม่
                 layoutData.forEach(item => {
                     const w = grid.addWidget({ x: item.x, y: item.y, w: item.w, h: item.h });
                     w.querySelector('.grid-stack-item-content').innerHTML = createWidgetHTML(item.title, item.type, item.config);
                 });
-                
-                logToConsole(`Layout loaded from ${file.name}`, 'success');
-            } catch (err) {
-                logToConsole(`Error parsing layout file: ${err}`, 'error');
-            }
+                logToConsole(`Loaded layout: ${file.name}`, 'success');
+            } catch (err) { logToConsole(`Layout Error: ${err}`, 'error'); }
         };
         reader.readAsText(file);
-        // Reset value เพื่อให้เลือกไฟล์เดิมซ้ำได้ถ้าต้องการ
         fileInputLayout.value = ''; 
     });
 
+    // --- 4. DATABASE MANAGER (CLIENT-SIDE) ---
+    const dbPathBox = document.getElementById('dbPathBox');
+    const dbPathText = document.getElementById('dbPathText');
+    const dbStatusLed = document.getElementById('dbStatusLed');
+    const dbClearBtn = document.getElementById('dbClearBtn');
+    const btnConnectDb = document.getElementById('btnConnectDb');
+    const dbFileInput = document.getElementById('dbFileInput');
 
-    // --- 4. MODAL LOGIC & DYNAMIC INPUTS ---
+    // คลิกเพื่อเลือกไฟล์
+    dbPathBox.addEventListener('click', (e) => {
+        if (e.target.closest('.path-clear-btn')) return; // ถ้ากดปุ่มลบ ไม่ต้องเปิดไฟล์
+        if (isDbRecording) return; // ถ้ากำลังอัด ห้ามเปลี่ยน
+        dbFileInput.click();
+    });
+
+    // เมื่อเลือกไฟล์เสร็จ
+    dbFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            currentDbFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = function() {
+                try {
+                    const uInt8Array = new Uint8Array(this.result);
+                    db = new SQL.Database(uInt8Array); // Load เข้า Memory
+                    dbPathText.innerText = file.name;
+                    dbPathText.classList.add('has-file');
+                    dbClearBtn.classList.add('visible');
+                    btnConnectDb.disabled = false;
+                    btnConnectDb.innerText = "Connect & Record";
+                    logToConsole(`Database Loaded: ${file.name}`, 'success');
+                } catch(err) {
+                    logToConsole(`DB Load Error: ${err}`, 'error');
+                }
+            }
+            reader.readAsArrayBuffer(file);
+        }
+        dbFileInput.value = '';
+    });
+
+    // ปุ่มลบไฟล์
+    dbClearBtn.addEventListener('click', () => {
+        if (isDbRecording) return;
+        db = null;
+        dbPathText.innerText = "No file selected";
+        dbPathText.classList.remove('has-file');
+        dbClearBtn.classList.remove('visible');
+        // ถ้าเคลียร์แล้ว อนุญาตให้กด Connect เพื่อสร้างไฟล์ใหม่ได้
+        btnConnectDb.innerText = "Create New & Record";
+        btnConnectDb.disabled = false;
+    });
+
+    // Default State: ถ้ายังไม่เลือกไฟล์ ให้ปุ่ม Connect สร้างไฟล์ใหม่ได้เลย
+    if(dbPathText.innerText.includes("No file")) {
+        btnConnectDb.disabled = false;
+        btnConnectDb.innerText = "Create New & Record";
+    }
+
+    // ปุ่ม Connect / Stop
+    btnConnectDb.addEventListener('click', () => {
+        if (!isDbRecording) {
+            // --- START ---
+            if (!SQL) { logToConsole("SQL.js is loading...", "error"); return; }
+            
+            // ถ้ายังไม่มี DB ให้สร้างใหม่
+            if (!db) {
+                db = new SQL.Database();
+                db.run("CREATE TABLE IF NOT EXISTS telemetry_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, raw_data TEXT);");
+                currentDbFileName = `log_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.sqlite`;
+                dbPathText.innerText = currentDbFileName + " (New)";
+                logToConsole("Created New Database in Memory", "success");
+            }
+
+            isDbRecording = true;
+            dbStatusLed.classList.add('active');
+            btnConnectDb.innerText = "Stop & Save";
+            btnConnectDb.classList.add('stop-mode');
+            dbPathBox.style.cursor = "not-allowed";
+            dbPathBox.style.opacity = "0.7";
+            
+        } else {
+            // --- STOP & SAVE ---
+            isDbRecording = false;
+            dbStatusLed.classList.remove('active');
+            btnConnectDb.innerText = "Connect & Record";
+            btnConnectDb.classList.remove('stop-mode');
+            dbPathBox.style.cursor = "pointer";
+            dbPathBox.style.opacity = "1";
+            
+            // Export และ Download
+            const binaryArray = db.export();
+            downloadFile(binaryArray, currentDbFileName, "application/x-sqlite3");
+            logToConsole(`Database Saved: ${currentDbFileName}`, "success");
+        }
+    });
+
+    // --- 5. MODAL LOGIC & SETTINGS ---
     const modalOverlay = document.getElementById('settingModalOverlay');
     const dynamicArea = document.getElementById('modal-dynamic-inputs');
     const inputName = document.getElementById('modalWidgetName');
     const selectType = document.getElementById('modalWidgetType');
     let currentEditingWidget = null;
 
+    // Helper: Toggle ช่อง Max Points เมื่อติ๊ก Unlimited
     window.toggleMaxInput = (checkbox) => {
         const input = document.getElementById('inp-max-points');
         if (input) {
-            if (checkbox.checked) {
-                input.classList.add('input-disabled');
-                input.disabled = true;
-            } else {
-                input.classList.remove('input-disabled');
-                input.disabled = false;
-            }
+            input.disabled = checkbox.checked;
+            if(checkbox.checked) input.classList.add('input-disabled');
+            else input.classList.remove('input-disabled');
         }
     };
 
     function renderModalInputs(type, currentConfig = {}) {
         dynamicArea.innerHTML = "";
         
+        // Defaults
         if (!currentConfig.indexes) currentConfig.indexes = ["0"];
         if (!currentConfig.format) currentConfig.format = "{0}";
         if (!currentConfig.maxPoints) currentConfig.maxPoints = 20;
@@ -125,8 +252,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (type === 'Text') {
             dynamicArea.innerHTML += `
                 <div class="form-group-stack">
-                    <label style="color:#aaa; font-size:0.8rem;">Data Format</label>
-                    <span class="helper-text">Example: <code>Velo: {0} m/s</code></span>
+                    <label class="modal-label-sm">Data Format</label>
+                    <span class="helper-text">Format: {0}, {1} ... use \\n for new line.</span>
                     <textarea id="inp-format" rows="3" style="height:auto;">${currentConfig.format}</textarea>
                 </div>
             `;
@@ -139,14 +266,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             dynamicArea.innerHTML += `
                 <div class="form-group-stack">
-                    <label style="color:#aaa; font-size:0.8rem;">Data Index (Y-Axis)</label>
-                    <span style="font-size:0.75rem; color:#666; font-style:italic;">X-Axis is Time.</span>
+                    <label class="modal-label-sm">Y-Axis Index</label>
                     <input type="number" id="inp-y" value="${idxY}" placeholder="0">
                 </div>
                 <div class="form-group-stack">
-                    <label style="color:#aaa; font-size:0.8rem;">Max Data Points</label>
+                    <label class="modal-label-sm">Max Data Points</label>
                     <div class="input-group-row">
-                        <input type="number" id="inp-max-points" value="${currentConfig.maxPoints}" placeholder="20" class="${disabledClass}" ${disabledAttr}>
+                        <input type="number" id="inp-max-points" value="${currentConfig.maxPoints}" ${disabledAttr} class="${disabledClass}">
                         <label class="checkbox-label">
                             <input type="checkbox" id="chk-unlimit" ${checkedAttr} onchange="toggleMaxInput(this)">
                             Unlimited
@@ -159,15 +285,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const lat = currentConfig.indexes[0] || "0";
             const lng = currentConfig.indexes[1] || "1";
             dynamicArea.innerHTML += `
-                <div class="dynamic-row"><label style="width:50px; font-size:0.8rem;">Lat:</label> <input type="number" id="inp-lat" value="${lat}"></div>
-                <div class="dynamic-row"><label style="width:50px; font-size:0.8rem;">Lng:</label> <input type="number" id="inp-lng" value="${lng}"></div>
+                <div class="dynamic-row"><label style="width:40px;">Lat:</label><input type="number" id="inp-lat" value="${lat}"></div>
+                <div class="dynamic-row"><label style="width:40px;">Lng:</label><input type="number" id="inp-lng" value="${lng}"></div>
             `;
         }
         else if (type === 'Table') {
-            dynamicArea.innerHTML += `
-                <div id="table-rows-container"></div>
-                <button class="btn-add-row" onclick="addTableRow()">+ Add Row</button>
-            `;
+            dynamicArea.innerHTML += `<div id="table-rows-container"></div><button class="btn-add-row" onclick="addTableRow()">+ Add Row</button>`;
             const container = document.getElementById('table-rows-container');
             if(!currentConfig.tableRows) currentConfig.tableRows = [{label: "Data", idx: "0"}];
             currentConfig.tableRows.forEach(row => addTableRow(row.label, row.idx, container));
@@ -181,13 +304,12 @@ document.addEventListener("DOMContentLoaded", () => {
         div.innerHTML = `
             <input type="text" class="inp-table-label" value="${label}" placeholder="Label">
             <input type="number" class="inp-table-index" value="${idx}" placeholder="Idx" style="width:80px;">
-            <button class="btn-icon-sm" onclick="this.parentElement.remove()" title="Remove">
-                <i class="fa-solid fa-minus"></i>
-            </button>
+            <button class="btn-icon-sm" onclick="this.parentElement.remove()"><i class="fa-solid fa-minus"></i></button>
         `;
         container.appendChild(div);
     }
 
+    // Open Modal
     window.openModal = function(widgetElement) {
         currentEditingWidget = widgetElement;
         const header = widgetElement.querySelector('.widget-title');
@@ -204,6 +326,7 @@ document.addEventListener("DOMContentLoaded", () => {
         modalOverlay.classList.add('active');
     }
 
+    // Close & Save Modal
     function closeModal() {
         if (currentEditingWidget) {
             const header = currentEditingWidget.querySelector('.widget-title');
@@ -243,6 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
+            // Preserve Graph Data Logic
             const wId = body.getAttribute('id');
             if (oldType === 'Graph' && type === 'Graph' && widgetInstances[wId]) {
                 const chartInstance = widgetInstances[wId];
@@ -264,6 +388,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             body.innerHTML = `<div class="content-area" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">Waiting...</div><div class="widget-index-label">${label}</div>`;
 
+            // Reset Instances
             if(wId && widgetInstances[wId]) {
                  if(widgetInstances[wId].destroy) widgetInstances[wId].destroy();
                  if(widgetInstances[wId].remove) widgetInstances[wId].remove(); 
@@ -274,26 +399,23 @@ document.addEventListener("DOMContentLoaded", () => {
         currentEditingWidget = null;
     }
 
+    // Modal Events
     document.getElementById('btnCloseModal').addEventListener('click', closeModal);
     
     let isMouseDownOnOverlay = false;
-    modalOverlay.addEventListener('mousedown', (e) => {
-        isMouseDownOnOverlay = (e.target === modalOverlay);
-    });
-    modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay && isMouseDownOnOverlay) closeModal();
-        isMouseDownOnOverlay = false;
-    });
+    modalOverlay.addEventListener('mousedown', (e) => { isMouseDownOnOverlay = (e.target === modalOverlay); });
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay && isMouseDownOnOverlay) closeModal(); isMouseDownOnOverlay = false; });
 
     selectType.addEventListener('change', () => renderModalInputs(selectType.value, {}));
-    document.getElementById('btnDeleteWidget').addEventListener('click', () => {
-        if(currentEditingWidget) { grid.removeWidget(currentEditingWidget); closeModal(); }
-    });
+    document.getElementById('btnDeleteWidget').addEventListener('click', () => { if(currentEditingWidget) { grid.removeWidget(currentEditingWidget); closeModal(); } });
+    
+    // Delegation for Settings Button
     document.querySelector('.grid-stack').addEventListener('click', (e) => {
         const btn = e.target.closest('.widget-settings-btn');
         if (btn) openModal(btn.closest('.grid-stack-item'));
     });
 
+    // --- 6. SIDEBAR & GENERAL UI ---
     document.getElementById('btnAddWidget').addEventListener('click', () => {
         const nameInp = document.getElementById('widget-name');
         const typeInp = document.getElementById('widget-type');
@@ -301,181 +423,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const w = grid.addWidget({ w: 3, h: 2 });
         if (w) w.querySelector('.grid-stack-item-content').innerHTML = createWidgetHTML(name, typeInp.value, {indexes:["0"], format:"{0}"});
         nameInp.value = "";
-    });
-
-    // --- DATABASE LOGIC ---
-    const dbPathBox = document.getElementById('dbPathBox');
-    const dbPathText = document.getElementById('dbPathText');
-    const dbStatusLed = document.getElementById('dbStatusLed');
-    const dbClearBtn = document.getElementById('dbClearBtn');
-    const btnConnectDb = document.getElementById('btnConnectDb');
-    let currentDbPath = "";
-    let isDbRecording = false;
-
-    dbPathBox.addEventListener('click', async (e) => {
-        if (e.target.closest('.path-clear-btn')) return;
-        if (isDbRecording) return;
-
-        try {
-            dbPathText.innerText = "Opening Dialog...";
-            const res = await fetch('/browse_db_path');
-            const data = await res.json();
-            
-            if (data.success) {
-                currentDbPath = data.path;
-                dbPathText.innerText = currentDbPath;
-                dbPathText.classList.add('has-file');
-                dbClearBtn.classList.add('visible'); 
-                btnConnectDb.disabled = false;
-            } else {
-                if(data.msg === 'Cancelled' && !currentDbPath) {
-                    dbPathText.innerText = "No file selected";
-                } else if (currentDbPath) {
-                    dbPathText.innerText = currentDbPath;
-                }
-            }
-        } catch(e) {
-            logToConsole(`DB Browser Error: ${e}`, 'error');
-            dbPathText.innerText = "Error opening dialog";
-        }
-    });
-
-    dbClearBtn.addEventListener('click', (e) => {
-        if(isDbRecording) return;
-        currentDbPath = "";
-        dbPathText.innerText = "No file selected";
-        dbPathText.classList.remove('has-file');
-        dbClearBtn.classList.remove('visible'); 
-        btnConnectDb.disabled = true;
-    });
-
-    btnConnectDb.addEventListener('click', () => {
-        if (!isDbRecording) {
-            if(currentDbPath) socket.emit('connect_db', { path: currentDbPath });
-        } else {
-            socket.emit('stop_db');
-        }
-    });
-
-    socket.on('db_status', (data) => {
-        isDbRecording = data.recording;
-        if (isDbRecording) {
-            dbStatusLed.classList.add('active');
-            btnConnectDb.innerText = "Stop Recording";
-            btnConnectDb.classList.add('stop-mode');
-            dbPathBox.style.cursor = "not-allowed";
-            dbPathBox.style.opacity = "0.7";
-        } else {
-            dbStatusLed.classList.remove('active');
-            btnConnectDb.innerText = "Connect & Record";
-            btnConnectDb.classList.remove('stop-mode');
-            dbPathBox.style.cursor = "pointer";
-            dbPathBox.style.opacity = "1";
-        }
-    });
-
-    // --- Console & Uplink ---
-    const consoleOut = document.getElementById('consoleOutput');
-    const consoleInp = document.getElementById('consoleInput');
-    const consolePanel = document.getElementById('consolePanel');
-    const consoleResizer = document.getElementById('consoleResizer');
-
-    function logToConsole(msg, type='normal') {
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('th-TH', { hour12: false });
-        const line = document.createElement('div');
-        line.className = 'log-line';
-        line.style.color = type === 'error' ? '#ef4444' : (type === 'success' ? '#86efac' : '#ccc');
-        line.innerHTML = `<span class="log-time">[${timeStr}]</span>${msg}`;
-        consoleOut.appendChild(line);
-        consoleOut.scrollTop = consoleOut.scrollHeight;
-    }
-
-    socket.on('log_message', (d) => logToConsole(d.msg, d.type));
-    socket.on('serial_data', (d) => {
-        logToConsole(`RX: ${d.data}`);
-        updateDashboard(d.data);
-    });
-
-    consoleInp.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const cmd = consoleInp.value.trim();
-            if (cmd) {
-                socket.emit('send_command', { cmd: cmd });
-                consoleInp.value = "";
-            }
-        }
-    });
-
-    document.getElementById('btnClearConsole').addEventListener('click', () => {
-        consoleOut.innerHTML = '';
-    });
-
-    let isResizing = false;
-    let isDragging = false; 
-    let startY = 0;
-
-    consoleResizer.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        isDragging = false; 
-        startY = e.clientY; 
-        document.body.style.cursor = 'row-resize';
-        e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        
-        if (Math.abs(e.clientY - startY) > 5) {
-            isDragging = true;
-        }
-
-        if (isDragging) {
-            const containerH = document.body.clientHeight;
-            let h = containerH - e.clientY;
-            if (h < 50) {
-                consolePanel.classList.add('collapsed');
-                document.documentElement.style.removeProperty('--console-height');
-            } else {
-                consolePanel.classList.remove('collapsed');
-                if (h > 600) h = 600;
-                document.documentElement.style.setProperty('--console-height', h + 'px');
-            }
-        }
-    });
-
-    document.addEventListener('mouseup', (e) => {
-        if (isResizing) {
-            if (!isDragging) {
-                if (consolePanel.classList.contains('collapsed')) {
-                    consolePanel.classList.remove('collapsed');
-                    document.documentElement.style.setProperty('--console-height', '180px');
-                } else {
-                    consolePanel.classList.add('collapsed');
-                    document.documentElement.style.removeProperty('--console-height');
-                }
-            }
-            isResizing = false;
-            isDragging = false;
-            document.body.style.cursor = 'default';
-        }
-    });
-
-    // Connection & Sim
-    document.getElementById('btnConnect').addEventListener('click', () => {
-        const com = document.getElementById('cfg-com');
-        const baud = document.getElementById('cfg-baud');
-        socket.emit('connect_serial', { port: com.value, baud: baud.value });
-        com.value = ""; baud.value = "";
-    });
-
-    document.getElementById('btnSend').addEventListener('click', () => {
-        const sim = document.getElementById('sim-input');
-        if(sim.value.trim()) {
-            logToConsole(`RX(Sim): ${sim.value}`);
-            updateDashboard(sim.value);
-            sim.value = "";
-        }
     });
 
     document.getElementById('btnToggleSidebar').addEventListener('click', () => {
@@ -488,28 +435,84 @@ document.addEventListener("DOMContentLoaded", () => {
         header.nextElementSibling.classList.toggle('open');
     }
 
+    // Edit Name (Click to Edit)
     const inpName = document.getElementById('modalWidgetName');
-    
     inpName.addEventListener('click', () => {
         if (inpName.hasAttribute('readonly')) {
             inpName.removeAttribute('readonly');
             inpName.classList.add('editable');
-            inpName.focus(); 
-            inpName.select(); 
+            inpName.focus(); inpName.select();
         }
     });
-
     const finishEditingName = () => {
         inpName.setAttribute('readonly', true);
         inpName.classList.remove('editable');
         inpName.blur(); 
     };
-
     inpName.addEventListener('blur', finishEditingName);
-    inpName.addEventListener('keydown', (e) => { 
-        if(e.key === 'Enter') finishEditingName(); 
+    inpName.addEventListener('keydown', (e) => { if(e.key === 'Enter') finishEditingName(); });
+
+    // --- 7. CONSOLE & SERIAL DATA HANDLING ---
+    const consoleInp = document.getElementById('consoleInput');
+    const consolePanel = document.getElementById('consolePanel');
+    const consoleResizer = document.getElementById('consoleResizer');
+
+    // Receive Serial Data
+    socket.on('serial_data', (d) => {
+        const raw = d.data;
+        logToConsole(`RX: ${raw}`);
+        updateDashboard(raw);
+
+        // Record to Client DB
+        if (isDbRecording && db) {
+            try {
+                const stmt = db.prepare("INSERT INTO telemetry_logs (raw_data) VALUES (?)");
+                stmt.run([raw]);
+                stmt.free();
+            } catch(e) { console.error(e); }
+        }
     });
 
+    socket.on('log_message', (d) => logToConsole(d.msg, d.type));
+
+    // Uplink
+    consoleInp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const cmd = consoleInp.value.trim();
+            if (cmd) { socket.emit('send_command', { cmd: cmd }); consoleInp.value = ""; }
+        }
+    });
+    document.getElementById('btnClearConsole').addEventListener('click', () => { document.getElementById('consoleOutput').innerHTML = ''; });
+
+    // Console Resizer Logic (Drag vs Click)
+    let isResizing = false, isDragging = false, startY = 0;
+    consoleResizer.addEventListener('mousedown', (e) => { isResizing = true; isDragging = false; startY = e.clientY; document.body.style.cursor = 'row-resize'; e.preventDefault(); });
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        if (Math.abs(e.clientY - startY) > 5) isDragging = true;
+        if (isDragging) {
+            let h = document.body.clientHeight - e.clientY;
+            if (h < 50) { consolePanel.classList.add('collapsed'); document.documentElement.style.removeProperty('--console-height'); }
+            else { consolePanel.classList.remove('collapsed'); if(h>600) h=600; document.documentElement.style.setProperty('--console-height', h + 'px'); }
+        }
+    });
+    document.addEventListener('mouseup', () => {
+        if (isResizing && !isDragging) {
+            if (consolePanel.classList.contains('collapsed')) { consolePanel.classList.remove('collapsed'); document.documentElement.style.setProperty('--console-height', '180px'); }
+            else { consolePanel.classList.add('collapsed'); document.documentElement.style.removeProperty('--console-height'); }
+        }
+        isResizing = false; isDragging = false; document.body.style.cursor = 'default';
+    });
+
+    document.getElementById('btnConnect').addEventListener('click', () => {
+        socket.emit('connect_serial', { port: document.getElementById('cfg-com').value, baud: document.getElementById('cfg-baud').value });
+    });
+    document.getElementById('btnSend').addEventListener('click', () => {
+        const val = document.getElementById('sim-input').value;
+        if(val.trim()) { logToConsole(`RX(Sim): ${val}`); updateDashboard(val); document.getElementById('sim-input').value = ""; }
+    });
+
+    // --- 8. DASHBOARD UPDATE LOGIC ---
     function updateDashboard(dataString) {
         const dataArray = dataString.split(',').map(s => s.trim());
         const widgets = document.querySelectorAll('.widget-body');
@@ -529,10 +532,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 let text = config.format || "{0}";
                 text = text.replace(/\{(\d+)\}/g, (match, index) => {
                     const i = parseInt(index);
-                    if (!isNaN(i) && dataArray[i] !== undefined) {
-                        return dataArray[i]; 
-                    }
-                    return "NaN"; 
+                    return (!isNaN(i) && dataArray[i] !== undefined) ? dataArray[i] : "NaN";
                 });
                 contentArea.innerHTML = text.replace(/\\n/g, '<br>');
             }
@@ -545,20 +545,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!widgetInstances[wId]) {
                     contentArea.innerHTML = '<canvas></canvas>';
                     const ctx = contentArea.querySelector('canvas').getContext('2d');
-                    let initialData = { labels: [], datasets: [{ label: 'Data', data: [], borderColor: '#38bdf8', tension: 0.3, pointRadius: 0 }] };
+                    let initData = { labels: [], datasets: [{ label: 'Data', data: [], borderColor: '#38bdf8', tension: 0.3, pointRadius: 0 }] };
                     if (widget.preservedChartData) {
-                        initialData.labels = widget.preservedChartData.labels;
-                        initialData.datasets = widget.preservedChartData.datasets;
+                        initData.labels = widget.preservedChartData.labels;
+                        initData.datasets = widget.preservedChartData.datasets;
                         delete widget.preservedChartData;
                     }
                     widgetInstances[wId] = new Chart(ctx, {
-                        type: 'line',
-                        data: initialData,
-                        options: {
-                            responsive: true, maintainAspectRatio: false, animation: false,
-                            scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#fff' } } },
-                            plugins: { legend: { display: false } }
-                        }
+                        type: 'line', data: initData,
+                        options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#fff' } } }, plugins: { legend: { display: false } } }
                     });
                 }
                 const chart = widgetInstances[wId];
@@ -567,8 +562,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     chart.data.datasets[0].data.push(valY);
                     if (!isUnlimit) {
                         while (chart.data.labels.length > maxPoints) { 
-                            chart.data.labels.shift(); 
-                            chart.data.datasets[0].data.shift(); 
+                            chart.data.labels.shift(); chart.data.datasets[0].data.shift(); 
                         }
                     }
                     chart.update();
@@ -579,31 +573,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 const lng = parseFloat(dataArray[parseInt(config.indexes[1])]);
                 if (!widgetInstances[wId]) {
                     contentArea.innerHTML = '<div class="map-container" style="height:100%; width:100%;"></div>';
-                    const mapDiv = contentArea.querySelector('.map-container');
-                    const map = L.map(mapDiv).setView([13.7563, 100.5018], 10);
-                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; OpenStreetMap'
+                    // 🔑 KEY FIX: ปิด attributionControl ตรงนี้ครับ
+                    const map = L.map(contentArea.querySelector('.map-container'), { attributionControl: false }).setView([13.7563, 100.5018], 10);
+                    
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+                        // attribution: '&copy; OpenStreetMap' // เอาออกหรือไม่ใส่ก็ได้ เพราะเราปิด Control ไปแล้ว
                     }).addTo(map);
-                    const marker = L.marker([13.7563, 100.5018]).addTo(map);
-                    widgetInstances[wId] = { map, marker };
+                    
+                    widgetInstances[wId] = { map, marker: L.marker([13.7563, 100.5018]).addTo(map) };
                     setTimeout(() => map.invalidateSize(), 500);
                 }
-                const mapObj = widgetInstances[wId];
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    const newLatLng = new L.LatLng(lat, lng);
-                    mapObj.marker.setLatLng(newLatLng);
-                    mapObj.map.panTo(newLatLng);
+                    widgetInstances[wId].marker.setLatLng([lat, lng]);
+                    widgetInstances[wId].map.panTo([lat, lng]);
                 }
             }
             else if (type === 'Table') {
-                 let tableHTML = `<table class="data-table" style="width:100%;"><thead><tr><th>Type</th><th>Data</th></tr></thead><tbody>`;
-                 config.tableRows.forEach(row => {
-                     let val = dataArray[parseInt(row.idx)];
-                     if(val === undefined) val = "-";
-                     tableHTML += `<tr><td>${row.label}</td><td style="color:#38bdf8;">${val}</td></tr>`;
-                 });
-                 tableHTML += `</tbody></table>`;
-                 contentArea.innerHTML = `<div style="overflow-y:auto; max-height:100%; width:100%;">${tableHTML}</div>`;
+                 let html = `<table class="data-table" style="width:100%;"><thead><tr><th>Type</th><th>Data</th></tr></thead><tbody>`;
+                 if(config.tableRows) {
+                     config.tableRows.forEach(row => {
+                         let val = dataArray[parseInt(row.idx)];
+                         html += `<tr><td>${row.label}</td><td style="color:#38bdf8;">${val !== undefined ? val : "-"}</td></tr>`;
+                     });
+                 }
+                 contentArea.innerHTML = `<div style="overflow-y:auto; max-height:100%; width:100%;">${html}</tbody></table></div>`;
             }
         });
     }

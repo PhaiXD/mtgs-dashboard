@@ -35,7 +35,7 @@
                                 <button class="btn-layout" id="btnLoadLayout">
                                     <i class="fa-solid fa-upload"></i> Import Layout
                                 </button>
-                                <!-- 🔑 Hidden Input สำหรับเลือกไฟล์บนเครื่องลูกข่าย -->
+                                <!-- Hidden Inputs -->
                                 <input type="file" id="fileInputLayout" accept=".json" style="display: none;">
                             </div>
                         </div>
@@ -89,7 +89,7 @@
                     </div>
                 </div>
 
-                <!-- 4. DATABASE -->
+                <!-- 4. DATABASE (CLIENT SIDE) -->
                 <div class="section">
                     <div class="section-header" onclick="toggleSection(this)"><span class="section-title">DATABASE</span></div>
                     <div class="section-wrapper">
@@ -103,6 +103,8 @@
                                     </div>
                                     <i class="fa-solid fa-xmark path-clear-btn" id="dbClearBtn" title="Clear path"></i>
                                 </div>
+                                <!-- 🔑 Hidden Input for DB -->
+                                <input type="file" id="dbFileInput" accept=".sqlite,.db" style="display: none;">
                             </div>
                             <button class="btn-primary" id="btnConnectDb" disabled>Connect & Record</button>
                         </div>
@@ -162,6 +164,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <!-- 🔑 Load SQL.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    
     <script src="./script.js"></script>
 </body>
 </html>

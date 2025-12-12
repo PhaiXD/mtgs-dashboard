@@ -69,27 +69,66 @@ body {
 .section-inner { overflow: hidden; padding: 0 15px; }
 .section-wrapper.open .section-inner { padding: 15px; }
 
-/* Database Path Box */
+/* 🔑 BUTTON STYLING (NEW & PRETTY) */
+.btn-primary, .btn-action, .btn-layout {
+    border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
+    transition: all 0.2s ease-in-out;
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px; width: 100%; margin-top: 5px;
+}
+
+/* ปุ่ม Layout (Save/Load) - สีเทาเข้มแบบหรูๆ */
+.btn-layout {
+    background: #2a2a2a; color: #ccc; border: 1px solid #444;
+    margin-bottom: 0; 
+}
+.btn-layout:hover {
+    background: #333; color: #fff; border-color: #666;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.btn-layout:active { transform: translateY(0); }
+
+/* ปุ่มหลัก (ฟ้า) */
+.btn-primary { 
+    background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; 
+}
+.btn-primary:hover { 
+    filter: brightness(1.15); transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+}
+.btn-primary.stop-mode { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+
+/* ปุ่ม Send (ส้ม) */
+.btn-action.send { background: linear-gradient(90deg, #d97706, #ea580c); color: white; }
+.btn-action.send:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+/* Database Path Box (Clickable) */
 .path-box {
-    background: #111; border: 1px dashed #444; border-radius: 4px; padding: 10px; cursor: pointer;
-    position: relative; transition: all 0.2s ease; /* เพิ่ม Transition */
-    min-height: 40px; display: flex; align-items: center; margin-bottom: 10px;
+    background: #111; border: 1px dashed #444; border-radius: 6px; padding: 12px; 
+    cursor: pointer; position: relative; transition: all 0.2s ease;
+    min-height: 45px; display: flex; align-items: center; margin-bottom: 10px;
 }
 .path-box:hover {
-    background: #1f1f1f;
-    border-color: var(--accent);
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
+    background: #1f1f1f; border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
 }
 .path-content { display: flex; align-items: center; overflow: hidden; width: 90%; }
-.db-status-led { width: 8px; height: 8px; border-radius: 50%; background: #444; margin-right: 10px; flex-shrink: 0; transition: 0.3s; }
-.db-status-led.active { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-.path-text { font-size: 0.8rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.path-text.has-file { color: var(--accent); font-family: 'Consolas', monospace; }
-.path-clear-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: #666; cursor: pointer; padding: 4px; border-radius: 50%; font-size: 0.9rem; transition: 0.2s; display: none; }
+.db-status-led { width: 8px; height: 8px; border-radius: 50%; background: #444; margin-right: 12px; flex-shrink: 0; transition: 0.3s; }
+.db-status-led.active { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+.path-text { font-size: 0.85rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: 0.2s; }
+.path-text.has-file { color: var(--accent); font-family: 'Consolas', monospace; font-weight: 500; }
+
+.path-clear-btn { 
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%); 
+    color: #666; cursor: pointer; padding: 5px; border-radius: 50%; 
+    font-size: 0.9rem; transition: 0.2s; display: none;
+}
 .path-clear-btn:hover { color: var(--danger); background: rgba(255,255,255,0.1); }
 .path-clear-btn.visible { display: block; }
 
-/* Inputs & Buttons */
+/* Inputs */
 input, select, textarea {
     background-color: var(--bg-input); border: 1px solid var(--border-color);
     color: var(--text-main); border-radius: 4px; padding: 8px; width: 100%;
@@ -100,33 +139,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; }
 
-/* ปุ่ม Main Action (Connect, Add Widget) */
-.btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 8px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 5px; transition: filter 0.2s; }
-.btn-primary:hover { filter: brightness(1.15); }
-.btn-primary.stop-mode { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-
-.btn-action.send { background: linear-gradient(90deg, #d97706, #ea580c); color: white; border: none; padding: 8px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 5px; }
-.btn-action.send:hover { filter: brightness(1.15); }
-
-/* ปุ่ม Layout (แต่งใหม่ให้สวย) */
-.btn-layout {
-    background: #2a2a2a; color: #ccc; border: 1px solid #444; 
-    padding: 8px; width: 100%; border-radius: 6px; cursor: pointer; 
-    margin-bottom: 0; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: all 0.2s ease; /* Transition */
-}
-.btn-layout:hover {
-    background: #333; color: #fff; border-color: #666;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-}
-
 /* Console */
 .console {
     grid-area: console; background-color: #000; border: 1px solid var(--border-color); border-radius: var(--radius);
     display: flex; flex-direction: column; position: relative;
     height: var(--console-height, 180px); min-height: 0; 
-    transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* Animation ตอนเด้ง */
+    transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .console-resizer { width: 100%; height: 5px; background: #333; cursor: row-resize; position: absolute; top: 0; left: 0; z-index: 50; transition: 0.2s; }
 .console-resizer:hover { background: var(--accent); }
@@ -163,7 +181,7 @@ canvas { max-width: 100%; max-height: 100%; }
 .data-table td { color: #ddd; }
 .widget-index-label { position: absolute; bottom: 4px; left: 8px; font-size: 0.7rem; color: #555; font-family: monospace; pointer-events: none; }
 
-/* Modal Elements with Transition */
+/* Modal */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: 0.2s; backdrop-filter: blur(4px); }
 .modal-overlay.active { opacity: 1; visibility: visible; }
 .modal-content { background: #1a1a1a; border: 1px solid #444; border-radius: 8px; padding: 20px; width: 340px; transform: scale(0.95); transition: 0.2s; box-shadow: 0 20px 50px rgba(0,0,0,0.8); display: flex; flex-direction: column; }
@@ -179,28 +197,27 @@ canvas { max-width: 100%; max-height: 100%; }
 .modal-label-sm { font-size: 0.8rem; color: #888; margin-bottom: 4px; display: block; }
 .helper-text { font-size: 0.75rem; color: #666; font-style: italic; margin-bottom: 8px; display: block; }
 
-/* ปุ่ม Add Index (มี Transition) */
+/* 🔑 BUTTON TRANSITIONS (Add/Delete) */
 .btn-add-row { 
     background: transparent; border: 1px dashed #555; color: #888; 
     width: 100%; padding: 6px; cursor: pointer; border-radius: 4px; font-size: 0.85rem; margin-top: 5px;
-    transition: all 0.2s ease; /* Transition */
+    transition: all 0.3s ease; 
 }
 .btn-add-row:hover { 
     border-color: var(--accent); color: var(--accent); background: rgba(56, 189, 248, 0.05); 
 }
 
-.btn-icon-sm { width: 32px; height: 32px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger); border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
-.btn-icon-sm:hover { background: var(--danger); color: white; }
+.btn-icon-sm { width: 32px; height: 32px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger); border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.3s; }
+.btn-icon-sm:hover { background: var(--danger); color: white; box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
 
-/* ปุ่ม Delete Widget (มี Transition) */
 .btn-delete-modal { 
     background: transparent; border: 1px solid var(--danger); color: var(--danger); 
     width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; 
     display: flex; justify-content: center; gap: 8px; margin-top: 20px; font-weight: 600;
-    transition: all 0.2s ease; /* Transition */
+    transition: all 0.3s ease;
 }
 .btn-delete-modal:hover { 
-    background: var(--danger); color: white; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3); 
+    background: var(--danger); color: white; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); 
 }
 
 .modal-footer { margin-top: auto; }
