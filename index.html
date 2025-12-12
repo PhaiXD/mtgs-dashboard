@@ -20,6 +20,29 @@
 
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-content">
+                
+                <!-- 0. LAYOUT MANAGER -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <span class="section-title">LAYOUT MANAGER</span>
+                    </div>
+                    <div class="section-wrapper">
+                        <div class="section-inner">
+                            <div class="input-group-row" style="margin-bottom:0; gap:8px;">
+                                <button class="btn-layout" id="btnSaveLayout">
+                                    <i class="fa-solid fa-download"></i> Save Layout
+                                </button>
+                                <button class="btn-layout" id="btnLoadLayout">
+                                    <i class="fa-solid fa-upload"></i> Import Layout
+                                </button>
+                                <!-- 🔑 Hidden Input สำหรับเลือกไฟล์บนเครื่องลูกข่าย -->
+                                <input type="file" id="fileInputLayout" accept=".json" style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. CONFIG -->
                 <div class="section">
                     <div class="section-header active" onclick="toggleSection(this)">
                         <span class="section-title">CONFIG</span>
@@ -34,6 +57,8 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- 2. ADD WIDGET -->
                 <div class="section">
                     <div class="section-header active" onclick="toggleSection(this)"><span class="section-title">ADD WIDGET</span></div>
                     <div class="section-wrapper open">
@@ -52,6 +77,8 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- 3. SIMULATOR -->
                 <div class="section">
                     <div class="section-header" onclick="toggleSection(this)"><span class="section-title">SIMULATOR</span></div>
                     <div class="section-wrapper">
@@ -61,6 +88,27 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 4. DATABASE -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection(this)"><span class="section-title">DATABASE</span></div>
+                    <div class="section-wrapper">
+                        <div class="section-inner">
+                            <div class="form-group-stack">
+                                <label>SQLite Database Path</label>
+                                <div class="path-box" id="dbPathBox" title="Click to browse or create file">
+                                    <div class="path-content">
+                                        <span class="db-status-led" id="dbStatusLed"></span>
+                                        <span class="path-text" id="dbPathText">No file selected</span>
+                                    </div>
+                                    <i class="fa-solid fa-xmark path-clear-btn" id="dbClearBtn" title="Clear path"></i>
+                                </div>
+                            </div>
+                            <button class="btn-primary" id="btnConnectDb" disabled>Connect & Record</button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </aside>
 
@@ -71,7 +119,6 @@
         <footer class="console" id="consolePanel">
             <div class="console-resizer" id="consoleResizer"></div>
             <div class="console-header">
-                <!-- 🔑 ใช้ Path ตามที่ขอ -->
                 <img src="./icons/clear_data.png" id="btnClearConsole" class="icon-clear" alt="Clear" title="Clear Log">
             </div>
             <div class="console-output" id="consoleOutput">
@@ -90,8 +137,7 @@
         <div class="modal-content" id="settingModalContent">
             <div class="modal-header-row">
                 <div class="title-edit-wrapper">
-                    <input type="text" id="modalWidgetName" class="modal-widget-name" value="Untitled" readonly>
-                    <i class="fa-solid fa-pencil edit-icon" id="btnEditName"></i>
+                    <input type="text" id="modalWidgetName" class="modal-widget-name" value="Untitled" readonly title="Click to edit">
                 </div>
                 <button class="close-modal-btn" id="btnCloseModal"><i class="fa-solid fa-xmark"></i></button>
             </div>
