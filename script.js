@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let isDbRecording = false;
     let currentDbFileName = "telemetry.sqlite";
 
-    // โหลด SQL.js (WebAssembly)
+    // โหลด SQL.js
     const configSql = { locateFile: filename => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${filename}` };
     initSqlJs(configSql).then(function(sql) {
         SQL = sql;
@@ -33,17 +33,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- 2. HELPER FUNCTIONS ---
 
-    // สร้าง HTML ของ Widget
+    // สร้าง HTML ของ Widget (เพิ่มปุ่ม Lock)
     const createWidgetHTML = (title, type, config = {}) => {
         const configStr = JSON.stringify(config);
         let label = "ID: -";
         if (type === 'Text') label = "Format Based";
         else if(config.indexes && config.indexes.length > 0) label = `ID: ${config.indexes.join(',')}`;
 
+        // เพิ่ม isLocked เช็คสถานะเริ่มต้น
+        const lockedIcon = config.locked ? 'fa-lock' : 'fa-lock-open';
+        const lockedClass = config.locked ? 'locked' : '';
+
         return `
             <div class="widget-header">
                 <span class="widget-title">${title}</span>
-                <button class="widget-settings-btn"><i class="fa-solid fa-gear"></i></button>
+                <div class="widget-controls">
+                    <!-- ปุ่ม Lock -->
+                    <button class="widget-lock-btn ${lockedClass}" title="Lock/Unlock">
+                        <i class="fa-solid ${lockedIcon}"></i>
+                    </button>
+                    <!-- ปุ่ม Settings -->
+                    <button class="widget-settings-btn" title="Settings">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                </div>
             </div>
             <div class="widget-body" data-type="${type}" data-config='${configStr}'>
                 <div class="content-area" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">NaN</div>
@@ -52,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     };
 
-    // ฟังก์ชันดาวน์โหลดไฟล์ (สำหรับ Save Layout / DB)
+    // ฟังก์ชันดาวน์โหลดไฟล์
     function downloadFile(content, fileName, mimeType) {
         const a = document.createElement('a');
         mimeType = mimeType || "application/octet-stream";
@@ -68,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.removeChild(a);
     }
 
-    // ฟังก์ชัน Log ลง Console หน้าเว็บ
+    // ฟังก์ชัน Log
     const consoleOut = document.getElementById('consoleOutput');
     function logToConsole(msg, type='normal') {
         const now = new Date();
@@ -81,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
         consoleOut.scrollTop = consoleOut.scrollHeight;
     }
 
-    // --- 3. LAYOUT MANAGER (SAVE / LOAD) ---
+    // --- 3. LAYOUT MANAGER ---
     const btnSaveLayout = document.getElementById('btnSaveLayout');
     const btnLoadLayout = document.getElementById('btnLoadLayout');
     const fileInputLayout = document.getElementById('fileInputLayout');
@@ -95,6 +108,10 @@ document.addEventListener("DOMContentLoaded", () => {
             let config = {};
             try { config = JSON.parse(body.dataset.config || '{}'); } catch(e) {}
             
+            // บันทึกสถานะ Lock ลงไปด้วย
+            const isLocked = grid.getGridItems().find(item => item === el)?.gridstackNode?.noMove || false;
+            config.locked = isLocked;
+
             layoutData.push({ 
                 x: node.x, y: node.y, w: node.w, h: node.h, 
                 title: title, 
@@ -103,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
         downloadFile(JSON.stringify(layoutData, null, 2), "dashboard_layout.json", "text/json");
-        logToConsole("Layout saved to device.", "success");
+        logToConsole("Layout saved.", "success");
     });
 
     btnLoadLayout.addEventListener('click', () => fileInputLayout.click());
@@ -117,7 +134,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 const layoutData = JSON.parse(ev.target.result);
                 grid.removeAll();
                 layoutData.forEach(item => {
-                    const w = grid.addWidget({ x: item.x, y: item.y, w: item.w, h: item.h });
+                    // สร้าง Widget และกำหนดสถานะ Lock (noMove, noResize)
+                    const isLocked = item.config?.locked || false;
+                    const w = grid.addWidget({ 
+                        x: item.x, y: item.y, w: item.w, h: item.h,
+                        noMove: isLocked, 
+                        noResize: isLocked
+                    });
                     w.querySelector('.grid-stack-item-content').innerHTML = createWidgetHTML(item.title, item.type, item.config);
                 });
                 logToConsole(`Loaded layout: ${file.name}`, 'success');
@@ -127,110 +150,40 @@ document.addEventListener("DOMContentLoaded", () => {
         fileInputLayout.value = ''; 
     });
 
-    // --- 4. DATABASE MANAGER (CLIENT-SIDE) ---
-    const dbPathBox = document.getElementById('dbPathBox');
-    const dbPathText = document.getElementById('dbPathText');
-    const dbStatusLed = document.getElementById('dbStatusLed');
-    const dbClearBtn = document.getElementById('dbClearBtn');
-    const btnConnectDb = document.getElementById('btnConnectDb');
-    const dbFileInput = document.getElementById('dbFileInput');
-
-    // คลิกเพื่อเลือกไฟล์
-    dbPathBox.addEventListener('click', (e) => {
-        if (e.target.closest('.path-clear-btn')) return; // ถ้ากดปุ่มลบ ไม่ต้องเปิดไฟล์
-        if (isDbRecording) return; // ถ้ากำลังอัด ห้ามเปลี่ยน
-        dbFileInput.click();
-    });
-
-    // เมื่อเลือกไฟล์เสร็จ
-    dbFileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            currentDbFileName = file.name;
-            const reader = new FileReader();
-            reader.onload = function() {
-                try {
-                    const uInt8Array = new Uint8Array(this.result);
-                    db = new SQL.Database(uInt8Array); // Load เข้า Memory
-                    dbPathText.innerText = file.name;
-                    dbPathText.classList.add('has-file');
-                    dbClearBtn.classList.add('visible');
-                    btnConnectDb.disabled = false;
-                    btnConnectDb.innerText = "Connect & Record";
-                    logToConsole(`Database Loaded: ${file.name}`, 'success');
-                } catch(err) {
-                    logToConsole(`DB Load Error: ${err}`, 'error');
-                }
+    // --- 4. LOCK LOGIC (NEW) ---
+    // ใช้ Event Delegation ดักจับการกดปุ่ม Lock
+    document.querySelector('.grid-stack').addEventListener('click', (e) => {
+        // หาปุ่ม Lock
+        const lockBtn = e.target.closest('.widget-lock-btn');
+        if (lockBtn) {
+            const widgetEl = lockBtn.closest('.grid-stack-item');
+            const icon = lockBtn.querySelector('i');
+            
+            // เช็คสถานะปัจจุบันจาก GridStack
+            const isLocked = widgetEl.gridstackNode.noMove || false;
+            
+            // สลับสถานะ (Toggle)
+            if (isLocked) {
+                // Unlock
+                grid.update(widgetEl, { noMove: false, noResize: false });
+                icon.className = 'fa-solid fa-lock-open';
+                lockBtn.classList.remove('locked');
+            } else {
+                // Lock
+                grid.update(widgetEl, { noMove: true, noResize: true });
+                icon.className = 'fa-solid fa-lock';
+                lockBtn.classList.add('locked');
             }
-            reader.readAsArrayBuffer(file);
-        }
-        dbFileInput.value = '';
-    });
-
-    // ปุ่มลบไฟล์
-    dbClearBtn.addEventListener('click', () => {
-        if (isDbRecording) return;
-        db = null;
-        dbPathText.innerText = "No file selected";
-        dbPathText.classList.remove('has-file');
-        dbClearBtn.classList.remove('visible');
-        // ถ้าเคลียร์แล้ว อนุญาตให้กด Connect เพื่อสร้างไฟล์ใหม่ได้
-        btnConnectDb.innerText = "Create New & Record";
-        btnConnectDb.disabled = false;
-    });
-
-    // Default State: ถ้ายังไม่เลือกไฟล์ ให้ปุ่ม Connect สร้างไฟล์ใหม่ได้เลย
-    if(dbPathText.innerText.includes("No file")) {
-        btnConnectDb.disabled = false;
-        btnConnectDb.innerText = "Create New & Record";
-    }
-
-    // ปุ่ม Connect / Stop
-    btnConnectDb.addEventListener('click', () => {
-        if (!isDbRecording) {
-            // --- START ---
-            if (!SQL) { logToConsole("SQL.js is loading...", "error"); return; }
-            
-            // ถ้ายังไม่มี DB ให้สร้างใหม่
-            if (!db) {
-                db = new SQL.Database();
-                db.run("CREATE TABLE IF NOT EXISTS telemetry_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, raw_data TEXT);");
-                currentDbFileName = `log_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.sqlite`;
-                dbPathText.innerText = currentDbFileName + " (New)";
-                logToConsole("Created New Database in Memory", "success");
-            }
-
-            isDbRecording = true;
-            dbStatusLed.classList.add('active');
-            btnConnectDb.innerText = "Stop & Save";
-            btnConnectDb.classList.add('stop-mode');
-            dbPathBox.style.cursor = "not-allowed";
-            dbPathBox.style.opacity = "0.7";
-            
-        } else {
-            // --- STOP & SAVE ---
-            isDbRecording = false;
-            dbStatusLed.classList.remove('active');
-            btnConnectDb.innerText = "Connect & Record";
-            btnConnectDb.classList.remove('stop-mode');
-            dbPathBox.style.cursor = "pointer";
-            dbPathBox.style.opacity = "1";
-            
-            // Export และ Download
-            const binaryArray = db.export();
-            downloadFile(binaryArray, currentDbFileName, "application/x-sqlite3");
-            logToConsole(`Database Saved: ${currentDbFileName}`, "success");
         }
     });
 
-    // --- 5. MODAL LOGIC & SETTINGS ---
+    // --- 5. MODAL LOGIC & SETTINGS (Existing Code) ---
     const modalOverlay = document.getElementById('settingModalOverlay');
     const dynamicArea = document.getElementById('modal-dynamic-inputs');
     const inputName = document.getElementById('modalWidgetName');
     const selectType = document.getElementById('modalWidgetType');
     let currentEditingWidget = null;
 
-    // Helper: Toggle ช่อง Max Points เมื่อติ๊ก Unlimited
     window.toggleMaxInput = (checkbox) => {
         const input = document.getElementById('inp-max-points');
         if (input) {
@@ -243,7 +196,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function renderModalInputs(type, currentConfig = {}) {
         dynamicArea.innerHTML = "";
         
-        // Defaults
         if (!currentConfig.indexes) currentConfig.indexes = ["0"];
         if (!currentConfig.format) currentConfig.format = "{0}";
         if (!currentConfig.maxPoints) currentConfig.maxPoints = 20;
@@ -366,6 +318,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
+            // Restore Lock State (สำคัญ: ต้องไม่ลืมค่า lock เดิม)
+            const oldConfig = JSON.parse(body.dataset.config || '{}');
+            newConfig.locked = oldConfig.locked || false;
+
             // Preserve Graph Data Logic
             const wId = body.getAttribute('id');
             if (oldType === 'Graph' && type === 'Graph' && widgetInstances[wId]) {
@@ -388,7 +344,6 @@ document.addEventListener("DOMContentLoaded", () => {
             
             body.innerHTML = `<div class="content-area" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">Waiting...</div><div class="widget-index-label">${label}</div>`;
 
-            // Reset Instances
             if(wId && widgetInstances[wId]) {
                  if(widgetInstances[wId].destroy) widgetInstances[wId].destroy();
                  if(widgetInstances[wId].remove) widgetInstances[wId].remove(); 
@@ -399,7 +354,6 @@ document.addEventListener("DOMContentLoaded", () => {
         currentEditingWidget = null;
     }
 
-    // Modal Events
     document.getElementById('btnCloseModal').addEventListener('click', closeModal);
     
     let isMouseDownOnOverlay = false;
@@ -409,8 +363,8 @@ document.addEventListener("DOMContentLoaded", () => {
     selectType.addEventListener('change', () => renderModalInputs(selectType.value, {}));
     document.getElementById('btnDeleteWidget').addEventListener('click', () => { if(currentEditingWidget) { grid.removeWidget(currentEditingWidget); closeModal(); } });
     
-    // Delegation for Settings Button
     document.querySelector('.grid-stack').addEventListener('click', (e) => {
+        // แก้ไข: เช็คเฉพาะปุ่ม Settings เท่านั้น (ปุ่ม Lock แยกไปดักข้างบนแล้ว)
         const btn = e.target.closest('.widget-settings-btn');
         if (btn) openModal(btn.closest('.grid-stack-item'));
     });
@@ -435,7 +389,7 @@ document.addEventListener("DOMContentLoaded", () => {
         header.nextElementSibling.classList.toggle('open');
     }
 
-    // Edit Name (Click to Edit)
+    // Edit Name
     const inpName = document.getElementById('modalWidgetName');
     inpName.addEventListener('click', () => {
         if (inpName.hasAttribute('readonly')) {
@@ -452,18 +406,94 @@ document.addEventListener("DOMContentLoaded", () => {
     inpName.addEventListener('blur', finishEditingName);
     inpName.addEventListener('keydown', (e) => { if(e.key === 'Enter') finishEditingName(); });
 
-    // --- 7. CONSOLE & SERIAL DATA HANDLING ---
+    // --- 7. DATABASE & SERIAL ---
+    const dbPathBox = document.getElementById('dbPathBox');
+    const dbPathText = document.getElementById('dbPathText');
+    const dbStatusLed = document.getElementById('dbStatusLed');
+    const dbClearBtn = document.getElementById('dbClearBtn');
+    const btnConnectDb = document.getElementById('btnConnectDb');
+    const dbFileInput = document.getElementById('dbFileInput');
+
+    dbPathBox.addEventListener('click', (e) => {
+        if (e.target.closest('.path-clear-btn')) return;
+        if (isDbRecording) return;
+        dbFileInput.click();
+    });
+
+    dbFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            currentDbFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = function() {
+                try {
+                    const uInt8Array = new Uint8Array(this.result);
+                    db = new SQL.Database(uInt8Array); 
+                    dbPathText.innerText = file.name;
+                    dbPathText.classList.add('has-file');
+                    dbClearBtn.classList.add('visible');
+                    btnConnectDb.disabled = false;
+                    btnConnectDb.innerText = "Connect & Record";
+                    logToConsole(`Database Loaded: ${file.name}`, 'success');
+                } catch(err) { logToConsole(`DB Load Error: ${err}`, 'error'); }
+            }
+            reader.readAsArrayBuffer(file);
+        }
+        dbFileInput.value = '';
+    });
+
+    dbClearBtn.addEventListener('click', () => {
+        if (isDbRecording) return;
+        db = null;
+        dbPathText.innerText = "No file selected";
+        dbPathText.classList.remove('has-file');
+        dbClearBtn.classList.remove('visible');
+        btnConnectDb.innerText = "Create New & Record";
+        btnConnectDb.disabled = false;
+    });
+
+    if(dbPathText.innerText.includes("No file")) {
+        btnConnectDb.disabled = false;
+        btnConnectDb.innerText = "Create New & Record";
+    }
+
+    btnConnectDb.addEventListener('click', () => {
+        if (!isDbRecording) {
+            if (!SQL) { logToConsole("SQL.js is loading...", "error"); return; }
+            if (!db) {
+                db = new SQL.Database();
+                db.run("CREATE TABLE IF NOT EXISTS telemetry_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, raw_data TEXT);");
+                currentDbFileName = `log_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.sqlite`;
+                dbPathText.innerText = currentDbFileName + " (New)";
+                logToConsole("Created New Database in Memory", "success");
+            }
+            isDbRecording = true;
+            dbStatusLed.classList.add('active');
+            btnConnectDb.innerText = "Stop & Save";
+            btnConnectDb.classList.add('stop-mode');
+            dbPathBox.style.cursor = "not-allowed";
+            dbPathBox.style.opacity = "0.7";
+        } else {
+            isDbRecording = false;
+            dbStatusLed.classList.remove('active');
+            btnConnectDb.innerText = "Connect & Record";
+            btnConnectDb.classList.remove('stop-mode');
+            dbPathBox.style.cursor = "pointer";
+            dbPathBox.style.opacity = "1";
+            const binaryArray = db.export();
+            downloadFile(binaryArray, currentDbFileName, "application/x-sqlite3");
+            logToConsole(`Database Saved: ${currentDbFileName}`, "success");
+        }
+    });
+
     const consoleInp = document.getElementById('consoleInput');
     const consolePanel = document.getElementById('consolePanel');
     const consoleResizer = document.getElementById('consoleResizer');
 
-    // Receive Serial Data
     socket.on('serial_data', (d) => {
         const raw = d.data;
         logToConsole(`RX: ${raw}`);
         updateDashboard(raw);
-
-        // Record to Client DB
         if (isDbRecording && db) {
             try {
                 const stmt = db.prepare("INSERT INTO telemetry_logs (raw_data) VALUES (?)");
@@ -475,7 +505,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     socket.on('log_message', (d) => logToConsole(d.msg, d.type));
 
-    // Uplink
     consoleInp.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const cmd = consoleInp.value.trim();
@@ -484,7 +513,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     document.getElementById('btnClearConsole').addEventListener('click', () => { document.getElementById('consoleOutput').innerHTML = ''; });
 
-    // Console Resizer Logic (Drag vs Click)
     let isResizing = false, isDragging = false, startY = 0;
     consoleResizer.addEventListener('mousedown', (e) => { isResizing = true; isDragging = false; startY = e.clientY; document.body.style.cursor = 'row-resize'; e.preventDefault(); });
     document.addEventListener('mousemove', (e) => {
@@ -512,7 +540,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if(val.trim()) { logToConsole(`RX(Sim): ${val}`); updateDashboard(val); document.getElementById('sim-input').value = ""; }
     });
 
-    // --- 8. DASHBOARD UPDATE LOGIC ---
     function updateDashboard(dataString) {
         const dataArray = dataString.split(',').map(s => s.trim());
         const widgets = document.querySelectorAll('.widget-body');
@@ -573,13 +600,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const lng = parseFloat(dataArray[parseInt(config.indexes[1])]);
                 if (!widgetInstances[wId]) {
                     contentArea.innerHTML = '<div class="map-container" style="height:100%; width:100%;"></div>';
-                    // 🔑 KEY FIX: ปิด attributionControl ตรงนี้ครับ
+                    // ปิด attributionControl
                     const map = L.map(contentArea.querySelector('.map-container'), { attributionControl: false }).setView([13.7563, 100.5018], 10);
-                    
-                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-                        // attribution: '&copy; OpenStreetMap' // เอาออกหรือไม่ใส่ก็ได้ เพราะเราปิด Control ไปแล้ว
-                    }).addTo(map);
-                    
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {}).addTo(map);
                     widgetInstances[wId] = { map, marker: L.marker([13.7563, 100.5018]).addTo(map) };
                     setTimeout(() => map.invalidateSize(), 500);
                 }

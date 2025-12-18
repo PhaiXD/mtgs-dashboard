@@ -225,3 +225,71 @@ canvas { max-width: 100%; max-height: 100%; }
 .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; user-select: none; white-space: nowrap; }
 .checkbox-label input[type="checkbox"] { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent); }
 .input-disabled { opacity: 0.4; pointer-events: none; background-color: #222; }
+
+/* Widget Header */
+.widget-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 6px 10px; 
+    background: rgba(255,255,255,0.03); 
+    cursor: grab; /* ปกติเป็นรูปมือจับ */
+    border-bottom: 1px solid var(--border-color); 
+    height: 35px; flex-shrink: 0; 
+}
+
+/* ถ้า Widget ถูก Lock ให้เปลี่ยน Cursor */
+.grid-stack-item[gs-no-move="true"] .widget-header {
+    cursor: default; /* เปลี่ยนเป็นเมาส์ปกติ ไม่ให้ดูเหมือนลากได้ */
+}
+
+.widget-title { 
+    font-size: 0.85rem; 
+    font-weight: 500; 
+    color: #ccc; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+
+/* 🔑 BUTTON CONTROLS GROUP */
+.widget-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px; /* ระยะห่างระหว่างปุ่ม Lock กับ Settings */
+}
+
+/* ปุ่มทั่วไปใน Header */
+.widget-settings-btn, .widget-lock-btn { 
+    background: transparent; 
+    border: none; 
+    color: #666; 
+    cursor: pointer; 
+    font-size: 0.85rem; 
+    transition: 0.2s;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 4px;
+}
+
+.widget-settings-btn:hover { 
+    color: #fff; 
+    background: rgba(255,255,255,0.1); 
+}
+
+/* ปุ่ม Lock (พิเศษ) */
+.widget-lock-btn:hover {
+    color: var(--accent);
+    background: rgba(56, 189, 248, 0.1);
+}
+
+/* สถานะ Locked (ล็อคแล้ว) */
+.widget-lock-btn.locked {
+    color: var(--danger); /* สีแดง */
+}
+.widget-lock-btn.locked:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
