@@ -121,11 +121,17 @@ body {
 /* Database Path Box */
 .path-box {
     background: #111; border: 1px solid #333; border-radius: 6px; padding: 12px; 
-    position: relative; transition: all 0.2s ease; cursor: pointer;
+    position: relative; transition: all 0.2s ease;
     min-height: 45px; display: flex; align-items: center; margin-bottom: 5px;
+    cursor: default; /* Default cursor: Click does nothing if empty */
 }
 
-/* 🆕 Hover Glow Effect (สว่างเมื่อชี้ เฉพาะตอนมีไฟล์) */
+/* 🆕 Hover Glow Effect & Pointer (Only if has file) */
+.path-box.has-file {
+    border-color: #444; 
+    cursor: pointer; /* Clickable */
+}
+
 .path-box.has-file:hover {
     border-color: var(--accent);
     box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
