@@ -181,34 +181,42 @@ input[type=number] { -moz-appearance: textfield; }
     height: var(--console-height, 180px); min-height: 0; 
     transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
-/* 🆕 Touch Friendly Resizer */
+/* 🆕 Touch Friendly Resizer & Rounded Handle */
 .console-resizer { 
-    width: 100%; height: 20px; /* เพิ่มพื้นที่สัมผัส */
-    margin-top: -10px; /* ดึงกลับขึ้นไป */
+    width: 100%; height: 20px; 
+    margin-top: -10px;
     background: transparent; 
     cursor: row-resize; 
     position: absolute; 
     top: 0; left: 0; 
     z-index: 50; 
     transition: 0.2s;
-    touch-action: none; /* 🔑 สำคัญ: ป้องกัน scroll หน้าจอ */
+    touch-action: none;
 }
-/* เส้นตรงกลาง */
+
+/* 🆕 Make it a rounded pill handle */
 .console-resizer::after {
     content: '';
     position: absolute;
-    top: 50%; left: 0; width: 100%; height: 5px;
-    background: #333;
-    transform: translateY(-50%);
+    top: 50%; left: 50%; /* Center */
+    width: 60px; /* Short pill width */
+    height: 6px; /* Pill height */
+    background: #444;
+    border-radius: 10px; /* Fully rounded corners */
+    transform: translate(-50%, -50%); /* Centering transform */
     transition: 0.2s;
 }
-.console-resizer:hover::after, .console-resizer:active::after { background: var(--accent); }
+.console-resizer:hover::after, .console-resizer:active::after { 
+    background: var(--accent); 
+    width: 80px; /* Expand slightly on hover/active */
+}
 
 .console.collapsed { height: 12px !important; border: none; background: transparent; overflow: visible; }
 .console.collapsed .console-output, .console.collapsed .console-input-area, .console.collapsed .console-header { display: none; }
-.console.collapsed .console-resizer { top: auto; bottom: 0; height: 20px; margin-top: 0; } /* Reset for collapsed state */
-.console.collapsed .console-resizer::after { top: 0; transform: none; height: 12px; background: #333; border-radius: 6px 6px 0 0; }
-.console.collapsed .console-resizer:hover::after { background: var(--accent); box-shadow: 0 -5px 15px rgba(56, 189, 248, 0.4); }
+.console.collapsed .console-resizer { top: auto; bottom: 0; height: 20px; margin-top: 0; } 
+/* ปรับ handle ตอน collapsed ให้เป็นแบบเดียวกัน */
+.console.collapsed .console-resizer::after { top: 50%; transform: translate(-50%, -50%); background: #333; }
+.console.collapsed .console-resizer:hover::after { background: var(--accent); }
 
 .console-header { position: absolute; top: 8px; right: 10px; z-index: 10; }
 .icon-clear { width: 16px; opacity: 0.5; cursor: pointer; filter: invert(1); transition: 0.2s; }
