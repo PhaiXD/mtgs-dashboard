@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
         margin: 8,
         column: 12,
         disableOneColumnMode: true,
-        // 🔑 KEY: กำหนดให้ลากได้เฉพาะ class .widget-header เท่านั้น
         draggable: {
             handle: '.widget-header',
             scroll: true,
@@ -19,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const socket = io(); 
 
-    // ตัวแปรสำหรับ Database
+    // ตัวแปรสำหรับ Database (Client-Side)
     let db = null;
     let SQL = null;
     let isDbRecording = false;
@@ -34,14 +33,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- 2. HELPER FUNCTIONS ---
 
-    // สร้าง HTML ของ Widget
+    // สร้าง HTML ของ Widget (เพิ่มปุ่ม Lock)
     const createWidgetHTML = (title, type, config = {}) => {
         const configStr = JSON.stringify(config);
         let label = "ID: -";
         if (type === 'Text') label = "Format Based";
         else if(config.indexes && config.indexes.length > 0) label = `ID: ${config.indexes.join(',')}`;
 
-        // เช็คสถานะ Lock เพื่อแสดงไอคอนให้ถูก
+        // เพิ่ม isLocked เช็คสถานะเริ่มต้น
         const lockedIcon = config.locked ? 'fa-lock' : 'fa-lock-open';
         const lockedClass = config.locked ? 'locked' : '';
 
@@ -49,9 +48,11 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="widget-header">
                 <span class="widget-title">${title}</span>
                 <div class="widget-controls">
+                    <!-- ปุ่ม Lock -->
                     <button class="widget-lock-btn ${lockedClass}" title="Lock/Unlock">
                         <i class="fa-solid ${lockedIcon}"></i>
                     </button>
+                    <!-- ปุ่ม Settings -->
                     <button class="widget-settings-btn" title="Settings">
                         <i class="fa-solid fa-gear"></i>
                     </button>
@@ -64,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     };
 
-    // Download File
+    // ฟังก์ชันดาวน์โหลดไฟล์
     function downloadFile(content, fileName, mimeType) {
         const a = document.createElement('a');
         mimeType = mimeType || "application/octet-stream";
@@ -80,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.removeChild(a);
     }
 
-    // Log Console
+    // ฟังก์ชัน Log
     const consoleOut = document.getElementById('consoleOutput');
     function logToConsole(msg, type='normal') {
         const now = new Date();
@@ -93,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
         consoleOut.scrollTop = consoleOut.scrollHeight;
     }
 
-    // --- 3. LAYOUT MANAGER (SAVE / LOAD) ---
+    // --- 3. LAYOUT MANAGER ---
     const btnSaveLayout = document.getElementById('btnSaveLayout');
     const btnLoadLayout = document.getElementById('btnLoadLayout');
     const fileInputLayout = document.getElementById('fileInputLayout');
@@ -107,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let config = {};
             try { config = JSON.parse(body.dataset.config || '{}'); } catch(e) {}
             
-            // บันทึกสถานะ Lock
+            // บันทึกสถานะ Lock ลงไปด้วย
             const isLocked = grid.getGridItems().find(item => item === el)?.gridstackNode?.noMove || false;
             config.locked = isLocked;
 
@@ -133,17 +134,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 const layoutData = JSON.parse(ev.target.result);
                 grid.removeAll();
                 layoutData.forEach(item => {
+                    // สร้าง Widget และกำหนดสถานะ Lock (noMove, noResize)
                     const isLocked = item.config?.locked || false;
-                    // 🔑 FIX: สร้าง Content HTML ก่อน
-                    const contentHtml = createWidgetHTML(item.title, item.type, item.config);
-                    
-                    // 🔑 FIX: ใส่ content เข้าไปพร้อมตอนสร้างเลย (เพื่อให้ Handle ทำงานทันที)
-                    grid.addWidget({ 
+                    const w = grid.addWidget({ 
                         x: item.x, y: item.y, w: item.w, h: item.h,
                         noMove: isLocked, 
-                        noResize: isLocked,
-                        content: contentHtml 
+                        noResize: isLocked
                     });
+                    w.querySelector('.grid-stack-item-content').innerHTML = createWidgetHTML(item.title, item.type, item.config);
                 });
                 logToConsole(`Loaded layout: ${file.name}`, 'success');
             } catch (err) { logToConsole(`Layout Error: ${err}`, 'error'); }
@@ -152,19 +150,26 @@ document.addEventListener("DOMContentLoaded", () => {
         fileInputLayout.value = ''; 
     });
 
-    // --- 4. LOCK LOGIC ---
+    // --- 4. LOCK LOGIC (NEW) ---
+    // ใช้ Event Delegation ดักจับการกดปุ่ม Lock
     document.querySelector('.grid-stack').addEventListener('click', (e) => {
+        // หาปุ่ม Lock
         const lockBtn = e.target.closest('.widget-lock-btn');
         if (lockBtn) {
             const widgetEl = lockBtn.closest('.grid-stack-item');
             const icon = lockBtn.querySelector('i');
+            
+            // เช็คสถานะปัจจุบันจาก GridStack
             const isLocked = widgetEl.gridstackNode.noMove || false;
             
-            if (isLocked) { // Unlock
+            // สลับสถานะ (Toggle)
+            if (isLocked) {
+                // Unlock
                 grid.update(widgetEl, { noMove: false, noResize: false });
                 icon.className = 'fa-solid fa-lock-open';
                 lockBtn.classList.remove('locked');
-            } else { // Lock
+            } else {
+                // Lock
                 grid.update(widgetEl, { noMove: true, noResize: true });
                 icon.className = 'fa-solid fa-lock';
                 lockBtn.classList.add('locked');
@@ -172,7 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // --- 5. MODAL LOGIC & SETTINGS ---
+    // --- 5. MODAL LOGIC & SETTINGS (Existing Code) ---
     const modalOverlay = document.getElementById('settingModalOverlay');
     const dynamicArea = document.getElementById('modal-dynamic-inputs');
     const inputName = document.getElementById('modalWidgetName');
@@ -256,6 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
         container.appendChild(div);
     }
 
+    // Open Modal
     window.openModal = function(widgetElement) {
         currentEditingWidget = widgetElement;
         const header = widgetElement.querySelector('.widget-title');
@@ -272,6 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
         modalOverlay.classList.add('active');
     }
 
+    // Close & Save Modal
     function closeModal() {
         if (currentEditingWidget) {
             const header = currentEditingWidget.querySelector('.widget-title');
@@ -311,9 +318,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
+            // Restore Lock State (สำคัญ: ต้องไม่ลืมค่า lock เดิม)
             const oldConfig = JSON.parse(body.dataset.config || '{}');
             newConfig.locked = oldConfig.locked || false;
 
+            // Preserve Graph Data Logic
             const wId = body.getAttribute('id');
             if (oldType === 'Graph' && type === 'Graph' && widgetInstances[wId]) {
                 const chartInstance = widgetInstances[wId];
@@ -355,6 +364,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('btnDeleteWidget').addEventListener('click', () => { if(currentEditingWidget) { grid.removeWidget(currentEditingWidget); closeModal(); } });
     
     document.querySelector('.grid-stack').addEventListener('click', (e) => {
+        // แก้ไข: เช็คเฉพาะปุ่ม Settings เท่านั้น (ปุ่ม Lock แยกไปดักข้างบนแล้ว)
         const btn = e.target.closest('.widget-settings-btn');
         if (btn) openModal(btn.closest('.grid-stack-item'));
     });
@@ -364,16 +374,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const nameInp = document.getElementById('widget-name');
         const typeInp = document.getElementById('widget-type');
         let name = nameInp.value.trim() || "Untitled";
-        
-        // 🔑 FIX: สร้าง Content HTML ก่อน
-        const contentHtml = createWidgetHTML(name, typeInp.value, {indexes:["0"], format:"{0}"});
-        
-        // 🔑 FIX: ส่ง content เข้าไปใน options เลย (Handle จะทำงานทันที)
-        grid.addWidget({ 
-            w: 3, h: 2, 
-            content: contentHtml 
-        });
-        
+        const w = grid.addWidget({ w: 3, h: 2 });
+        if (w) w.querySelector('.grid-stack-item-content').innerHTML = createWidgetHTML(name, typeInp.value, {indexes:["0"], format:"{0}"});
         nameInp.value = "";
     });
 
@@ -598,7 +600,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const lng = parseFloat(dataArray[parseInt(config.indexes[1])]);
                 if (!widgetInstances[wId]) {
                     contentArea.innerHTML = '<div class="map-container" style="height:100%; width:100%;"></div>';
-                    // 🔑 KEY: ปิด attributionControl
+                    // ปิด attributionControl
                     const map = L.map(contentArea.querySelector('.map-container'), { attributionControl: false }).setView([13.7563, 100.5018], 10);
                     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {}).addTo(map);
                     widgetInstances[wId] = { map, marker: L.marker([13.7563, 100.5018]).addTo(map) };
