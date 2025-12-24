@@ -121,15 +121,14 @@ body {
 /* Database Path Box */
 .path-box {
     background: #111; border: 1px solid #333; border-radius: 6px; padding: 12px; 
-    position: relative; transition: all 0.2s ease;
+    position: relative; transition: all 0.2s ease; cursor: default;
     min-height: 45px; display: flex; align-items: center; margin-bottom: 5px;
-    cursor: default; /* Default cursor: Click does nothing if empty */
 }
 
-/* 🆕 Hover Glow Effect & Pointer (Only if has file) */
-.path-box.has-file {
+/* 🆕 Hover Glow Effect (สว่างเมื่อชี้ เฉพาะตอนมีไฟล์) */
+.path-box.has-file { 
+    cursor: pointer;
     border-color: #444; 
-    cursor: pointer; /* Clickable */
 }
 
 .path-box.has-file:hover {
@@ -137,8 +136,6 @@ body {
     box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
     background: #1a1a1a;
 }
-
-.path-box.has-file { border-color: #444; }
 
 .path-content { display: flex; align-items: center; overflow: hidden; width: 90%; }
 .db-status-led { width: 8px; height: 8px; border-radius: 50%; background: #444; margin-right: 12px; flex-shrink: 0; transition: 0.3s; }
@@ -184,12 +181,34 @@ input[type=number] { -moz-appearance: textfield; }
     height: var(--console-height, 180px); min-height: 0; 
     transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
-.console-resizer { width: 100%; height: 5px; background: #333; cursor: row-resize; position: absolute; top: 0; left: 0; z-index: 50; transition: 0.2s; }
-.console-resizer:hover { background: var(--accent); }
+/* 🆕 Touch Friendly Resizer */
+.console-resizer { 
+    width: 100%; height: 20px; /* เพิ่มพื้นที่สัมผัส */
+    margin-top: -10px; /* ดึงกลับขึ้นไป */
+    background: transparent; 
+    cursor: row-resize; 
+    position: absolute; 
+    top: 0; left: 0; 
+    z-index: 50; 
+    transition: 0.2s;
+    touch-action: none; /* 🔑 สำคัญ: ป้องกัน scroll หน้าจอ */
+}
+/* เส้นตรงกลาง */
+.console-resizer::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 0; width: 100%; height: 5px;
+    background: #333;
+    transform: translateY(-50%);
+    transition: 0.2s;
+}
+.console-resizer:hover::after, .console-resizer:active::after { background: var(--accent); }
+
 .console.collapsed { height: 12px !important; border: none; background: transparent; overflow: visible; }
 .console.collapsed .console-output, .console.collapsed .console-input-area, .console.collapsed .console-header { display: none; }
-.console.collapsed .console-resizer { top: auto; bottom: 0; height: 12px; background: #333; border-radius: 6px 6px 0 0; }
-.console.collapsed .console-resizer:hover { background: var(--accent); box-shadow: 0 -5px 15px rgba(56, 189, 248, 0.4); }
+.console.collapsed .console-resizer { top: auto; bottom: 0; height: 20px; margin-top: 0; } /* Reset for collapsed state */
+.console.collapsed .console-resizer::after { top: 0; transform: none; height: 12px; background: #333; border-radius: 6px 6px 0 0; }
+.console.collapsed .console-resizer:hover::after { background: var(--accent); box-shadow: 0 -5px 15px rgba(56, 189, 248, 0.4); }
 
 .console-header { position: absolute; top: 8px; right: 10px; z-index: 10; }
 .icon-clear { width: 16px; opacity: 0.5; cursor: pointer; filter: invert(1); transition: 0.2s; }
