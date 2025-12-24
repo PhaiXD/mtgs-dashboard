@@ -90,13 +90,16 @@
 
                 <!-- 4. DATABASE (CLIENT SIDE) -->
                 <div class="section">
-                    <div class="section-header active" onclick="toggleSection(this)"><span class="section-title">DATABASE</span></div>
-                    <div class="section-wrapper open">
+                    <!-- 🆕 ปิด Section Database ไว้ตอนแรก (เอา class active/open ออก) -->
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <span class="section-title">DATABASE</span>
+                    </div>
+                    <div class="section-wrapper">
                         <div class="section-inner">
                             
                             <!-- ปุ่ม New File / Open File -->
                             <div class="db-actions-row">
-                                <button class="btn-db-action new" id="btnNewDbFile" title="Create New Database File">
+                                <button class="btn-db-action new" id="btnNewDbFile" title="Save As New File">
                                     <i class="fa-solid fa-file-circle-plus"></i> New File
                                 </button>
                                 <button class="btn-db-action open" id="btnOpenDbFile" title="Open Existing Database File">
@@ -106,7 +109,7 @@
 
                             <div class="form-group-stack">
                                 <!-- ส่วนแสดงชื่อไฟล์ -->
-                                <div class="path-box display-only" id="dbPathBox">
+                                <div class="path-box display-only" id="dbPathBox" title="Click to Reveal in Explorer">
                                     <div class="path-content">
                                         <span class="db-status-led" id="dbStatusLed"></span>
                                         <span class="path-text" id="dbPathText">No file selected (Auto)</span>
@@ -119,7 +122,7 @@
                                     <div class="db-info-text" id="dbInfoText">Ready to Record</div>
                                 </div>
                                 
-                                <!-- ⚠️ คำเตือน (แสดงเฉพาะตอน Open File) -->
+                                <!-- ⚠️ คำเตือน (แสดงเสมอเมื่อกด Start) -->
                                 <div class="db-warning-text" id="dbWarningText" style="display:none;">
                                     <i class="fa-solid fa-circle-exclamation"></i> <span><strong>DO NOT</strong> save the file while it is open.</span>
                                 </div>
