@@ -14,8 +14,19 @@
     <div class="app-container" id="appContainer">
         
         <header class="topbar">
-            <button class="btn-toggle-sidebar" id="btnToggleSidebar"><i class="fa-solid fa-bars"></i></button>
-            <span class="app-title">Modular Telemetry Ground Station Dashboard</span>
+            <!-- ส่วนซ้าย: ปุ่ม Sidebar + ชื่อ -->
+            <div class="header-left-group">
+                <button class="btn-toggle-sidebar" id="btnToggleSidebar"><i class="fa-solid fa-bars"></i></button>
+                <span class="app-title">Modular Telemetry Ground Station Dashboard</span>
+            </div>
+
+            <!-- ส่วนขวา: โลโก้ -->
+            <div class="header-logos">
+                <img src="icons/space_ac.png" alt="space_ac Logo" class="top-logo">
+                <img src="icons/ac.png" alt="AC Logo" class="top-logo">
+                <img src="icons/Mahidol.png" alt="Mahidol Logo" class="top-logo">
+                <img src="icons/CU.png" alt="CU Logo" class="top-logo">
+            </div>
         </header>
 
         <aside class="sidebar" id="sidebar">
@@ -96,7 +107,7 @@
                     <div class="section-wrapper">
                         <div class="section-inner">
                             
-                            <!-- 🆕 ปุ่ม New / Open -->
+                            <!-- ปุ่ม New / Open -->
                             <div class="db-actions-row">
                                 <button class="btn-db-action new" id="btnNewDbFile" title="Save As New File">
                                     <i class="fa-solid fa-file-circle-plus"></i> New File
@@ -121,7 +132,7 @@
                                     <div class="db-info-text" id="dbInfoText">Ready to Record</div>
                                 </div>
                                 
-                                <!-- ⚠️ คำเตือน -->
+                                <!-- ⚠️ คำเตือน (แสดงเสมอเมื่อกด Start) -->
                                 <div class="db-warning-text" id="dbWarningText" style="display:none;">
                                     <i class="fa-solid fa-circle-exclamation"></i> <span><strong>DO NOT</strong> save the file while it is open.</span>
                                 </div>
