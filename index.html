@@ -35,7 +35,6 @@
                                 <button class="btn-layout" id="btnLoadLayout">
                                     <i class="fa-solid fa-upload"></i> Import Layout
                                 </button>
-                                <!-- Hidden Inputs -->
                                 <input type="file" id="fileInputLayout" accept=".json" style="display: none;">
                             </div>
                         </div>
@@ -91,22 +90,45 @@
 
                 <!-- 4. DATABASE (CLIENT SIDE) -->
                 <div class="section">
-                    <div class="section-header" onclick="toggleSection(this)"><span class="section-title">DATABASE</span></div>
-                    <div class="section-wrapper">
+                    <div class="section-header active" onclick="toggleSection(this)"><span class="section-title">DATABASE</span></div>
+                    <div class="section-wrapper open">
                         <div class="section-inner">
+                            
+                            <!-- ปุ่ม New File / Open File -->
+                            <div class="db-actions-row">
+                                <button class="btn-db-action new" id="btnNewDbFile" title="Create New Database File">
+                                    <i class="fa-solid fa-file-circle-plus"></i> New File
+                                </button>
+                                <button class="btn-db-action open" id="btnOpenDbFile" title="Open Existing Database File">
+                                    <i class="fa-solid fa-folder-open"></i> Open File
+                                </button>
+                            </div>
+
                             <div class="form-group-stack">
-                                <label>SQLite Database Path</label>
-                                <div class="path-box" id="dbPathBox" title="Click to browse or create file">
+                                <!-- ส่วนแสดงชื่อไฟล์ -->
+                                <div class="path-box display-only" id="dbPathBox">
                                     <div class="path-content">
                                         <span class="db-status-led" id="dbStatusLed"></span>
-                                        <span class="path-text" id="dbPathText">No file selected</span>
+                                        <span class="path-text" id="dbPathText">No file selected (Auto)</span>
                                     </div>
-                                    <i class="fa-solid fa-xmark path-clear-btn" id="dbClearBtn" title="Clear path"></i>
+                                    <!-- ปุ่ม Clear (X) -->
+                                    <i class="fa-solid fa-xmark path-clear-btn" id="dbClearBtn" title="Close File"></i>
                                 </div>
-                                <!-- 🔑 Hidden Input for DB -->
+                                
+                                <div class="db-status-row">
+                                    <div class="db-info-text" id="dbInfoText">Ready to Record</div>
+                                </div>
+                                
+                                <!-- ⚠️ คำเตือน (แสดงเฉพาะตอน Open File) -->
+                                <div class="db-warning-text" id="dbWarningText" style="display:none;">
+                                    <i class="fa-solid fa-circle-exclamation"></i> <span><strong>DO NOT</strong> save the file while it is open.</span>
+                                </div>
+                                
+                                <!-- Hidden Input for Fallback Open -->
                                 <input type="file" id="dbFileInput" accept=".sqlite,.db" style="display: none;">
                             </div>
-                            <button class="btn-primary" id="btnConnectDb" disabled>Connect & Record</button>
+
+                            <button class="btn-primary" id="btnConnectDb">Start Recording</button>
                         </div>
                     </div>
                 </div>
@@ -124,7 +146,7 @@
                 <img src="./icons/clear_data.png" id="btnClearConsole" class="icon-clear" alt="Clear" title="Clear Log">
             </div>
             <div class="console-output" id="consoleOutput">
-                <div class="log-line" style="color:#aaa;">[SYSTEM] Ready.</div>
+                <div class="log-line" style="color:#aaa;">[SYSTEM] Initializing...</div>
             </div>
             <div class="console-input-area">
                 <span class="prompt-char">></span>
@@ -134,7 +156,7 @@
 
     </div>
     
-    <!-- MODAL -->
+    <!-- WIDGET MODAL -->
     <div class="modal-overlay" id="settingModalOverlay">
         <div class="modal-content" id="settingModalContent">
             <div class="modal-header-row">
@@ -164,8 +186,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
-    
-    <!-- 🔑 Load SQL.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     
     <script src="./script.js"></script>

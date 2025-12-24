@@ -10,6 +10,7 @@
     --text-muted:   #a0a0a0;
     --accent:       #38bdf8;
     --danger:       #ef4444;
+    --warning:      #f59e0b;
     --sidebar-width: 280px; 
     --topbar-height: 50px;
     --radius: 6px;
@@ -69,7 +70,7 @@ body {
 .section-inner { overflow: hidden; padding: 0 15px; }
 .section-wrapper.open .section-inner { padding: 15px; }
 
-/* 🔑 BUTTON STYLING (NEW & PRETTY) */
+/* 🔑 BUTTON STYLING */
 .btn-primary, .btn-action, .btn-layout {
     border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
     transition: all 0.2s ease-in-out;
@@ -78,7 +79,7 @@ body {
     padding: 10px; width: 100%; margin-top: 5px;
 }
 
-/* ปุ่ม Layout (Save/Load) - สีเทาเข้มแบบหรูๆ */
+/* ปุ่ม Layout */
 .btn-layout {
     background: #2a2a2a; color: #ccc; border: 1px solid #444;
     margin-bottom: 0; 
@@ -90,7 +91,7 @@ body {
 }
 .btn-layout:active { transform: translateY(0); }
 
-/* ปุ่มหลัก (ฟ้า) */
+/* ปุ่มหลัก */
 .btn-primary { 
     background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; 
 }
@@ -99,34 +100,54 @@ body {
     box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
 }
 .btn-primary.stop-mode { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; filter: none; }
 
-/* ปุ่ม Send (ส้ม) */
+/* ปุ่ม Send */
 .btn-action.send { background: linear-gradient(90deg, #d97706, #ea580c); color: white; }
 .btn-action.send:hover { filter: brightness(1.15); transform: translateY(-1px); }
 
-/* Database Path Box (Clickable) */
+/* 🆕 DB Action Buttons */
+.db-actions-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.btn-db-action {
+    flex: 1; background: #2a2a2a; border: 1px solid #444; color: #ccc;
+    padding: 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 500;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all 0.2s;
+}
+.btn-db-action:hover { background: #333; color: #fff; border-color: #666; transform: translateY(-1px); }
+.btn-db-action.new:hover { border-color: var(--accent); color: var(--accent); background: rgba(56, 189, 248, 0.05); }
+.btn-db-action.open:hover { border-color: #fca5a5; color: #fca5a5; background: rgba(239, 68, 68, 0.05); }
+
+/* Database Path Box */
 .path-box {
-    background: #111; border: 1px dashed #444; border-radius: 6px; padding: 12px; 
-    cursor: pointer; position: relative; transition: all 0.2s ease;
-    min-height: 45px; display: flex; align-items: center; margin-bottom: 10px;
+    background: #111; border: 1px solid #333; border-radius: 6px; padding: 12px; 
+    position: relative; transition: all 0.2s ease;
+    min-height: 45px; display: flex; align-items: center; margin-bottom: 5px;
 }
-.path-box:hover {
-    background: #1f1f1f; border-color: var(--accent);
-    box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
-}
+.path-box.has-file { border-color: #444; }
+
 .path-content { display: flex; align-items: center; overflow: hidden; width: 90%; }
 .db-status-led { width: 8px; height: 8px; border-radius: 50%; background: #444; margin-right: 12px; flex-shrink: 0; transition: 0.3s; }
 .db-status-led.active { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
-.path-text { font-size: 0.85rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: 0.2s; }
+.path-text { font-size: 0.85rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: 0.2s; }
 .path-text.has-file { color: var(--accent); font-family: 'Consolas', monospace; font-weight: 500; }
+.db-info-text { font-size: 0.75rem; color: #666; text-align: right; font-family: monospace; }
 
 .path-clear-btn { 
     position: absolute; right: 10px; top: 50%; transform: translateY(-50%); 
     color: #666; cursor: pointer; padding: 5px; border-radius: 50%; 
     font-size: 0.9rem; transition: 0.2s; display: none;
 }
-.path-clear-btn:hover { color: var(--danger); background: rgba(255,255,255,0.1); }
+.path-clear-btn:hover { color: var(--danger) !important; background: rgba(255,255,255,0.1); }
 .path-clear-btn.visible { display: block; }
+
+/* ⚠️ Warning Text */
+.db-warning-text {
+    font-size: 0.75rem; color: var(--warning); 
+    background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 4px; padding: 6px; margin-top: 5px;
+    display: flex; align-items: center; gap: 6px;
+}
 
 /* Inputs */
 input, select, textarea {
@@ -292,4 +313,17 @@ canvas { max-width: 100%; max-height: 100%; }
 }
 .widget-lock-btn.locked:hover {
     background: rgba(239, 68, 68, 0.1);
+}
+
+/* 🚀 SMOOTH WIDGET ANIMATION */
+.grid-stack-item {
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), 
+                width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), 
+                height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.grid-stack-item.ui-draggable-dragging, 
+.grid-stack-item.grid-stack-placeholder,
+.grid-stack-item.ui-resizable-resizing {
+    transition: none !important;
 }
