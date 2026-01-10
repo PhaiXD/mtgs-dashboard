@@ -14,3 +14,23 @@ This project provides a flexible interface for monitoring serial data. It uses a
 - **Layout Manager:** Save and load dashboard configurations as JSON files.
 - **Client-side Database:** Record telemetry logs directly to a local SQLite file via the browser.
 - **Console:** Integrated terminal for monitoring raw logs and sending uplink commands.
+
+## Installation
+
+### Prerequisites
+- Python 3.x (3.14 recommend)
+- pip (Python package manager)
+
+### Setup  
+1. Clone this repository or download the source code.
+2. Open a terminal within the project directory.
+3. Install the required Python libraries using the following command:
+```bash
+pip install flask flask-socketio pyserial eventlet
+```
+
+## Usage
+To start the application, run the app.py file:
+```bash
+python app.py
+```
